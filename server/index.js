@@ -16,6 +16,15 @@ const browserWss = new WebSocket.Server({ noServer: true });
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
+const ocppWss = new WebSocket.Server({ 
+  noServer: true,
+  handleProtocols: (protocols, request) => {
+    if (protocols.has('ocpp1.6')) return 'ocpp1.6';
+    if (protocols.has('ocpp2.0.1')) return 'ocpp2.0.1';
+    return protocols.values().next().value || false;
+  }
+});
+
 // REST API endpoints
 app.get('/api/stations', (req, res) => {
   res.json(store.getStations());
