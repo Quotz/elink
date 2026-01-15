@@ -125,17 +125,18 @@ server.on('upgrade', (request, socket, head) => {
   
   console.log(`[WS] Upgrade request: ${url.pathname}, protocols: ${protocols}`);
   
-  // Accept multiple paths for OCPP: /ocpp/, /socketserver/, /ws/
+  // Accept multiple paths for OCPP: /ocpp/, /socketserver/, /ws/ (case-insensitive)
+  const pathLower = url.pathname.toLowerCase();
   const ocppPaths = ['/ocpp/', '/ocpp', '/socketserver/', '/socketserver', '/ws/', '/ws'];
-  const isOcppPath = ocppPaths.some(p => url.pathname.startsWith(p) || url.pathname === p);
+  const isOcppPath = ocppPaths.some(p => pathLower.startsWith(p) || pathLower === p);
   
   if (isOcppPath) {
     // OCPP charger connection
-    // Extract charger ID from path - remove any known prefix
+    // Extract charger ID from path - remove any known prefix (case-insensitive)
     let chargerId = url.pathname
-      .replace('/ocpp/', '').replace('/ocpp', '')
-      .replace('/socketserver/', '').replace('/socketserver', '')
-      .replace('/ws/', '').replace('/ws', '');
+      .replace(/^\/ocpp\//i, '').replace(/^\/ocpp$/i, '')
+      .replace(/^\/socketserver\//i, '').replace(/^\/socketserver$/i, '')
+      .replace(/^\/ws\//i, '').replace(/^\/ws$/i, '');
     
     // If no ID in path, charger might send it differently - use a default
     if (!chargerId) {
