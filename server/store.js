@@ -5,7 +5,7 @@
 
 // Pre-configured stations - UPDATE THESE with your actual charger IDs and locations
 const stations = {
-  'CHARGER-001': {
+  '001': {
     id: '001',
     name: 'Station 1 - 7kW',
     power: 7,
@@ -19,8 +19,8 @@ const stations = {
     currentTransaction: null,
     lastTransaction: null
   },
-  'CHARGER-002': {
-    id: '30004496',
+  '002': {
+    id: '002',
     name: 'Station 2 - 22kW',
     power: 22,
     lat: 42.0024,  // Update with your actual coordinates

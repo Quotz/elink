@@ -10,20 +10,23 @@ const app = express();
 const server = http.createServer(app);
 
 // Two WebSocket servers: one for OCPP chargers, one for browser clients
-const ocppWss = new WebSocket.Server({ noServer: true });
+// OCPP server needs to handle subprotocol negotiation
+const ocppWss = new WebSocket.Server({ 
+  noServer: true,
+  handleProtocols: (protocols, request) => {
+    // Accept ocpp1.6 or ocpp2.0.1 subprotocol
+    console.log(`[OCPP] Requested protocols: ${protocols}`);
+    if (protocols.has('ocpp1.6')) return 'ocpp1.6';
+    if (protocols.has('ocpp2.0.1')) return 'ocpp2.0.1';
+    if (protocols.has('ocpp2.0')) return 'ocpp2.0';
+    // If no recognized protocol, accept first one offered
+    return protocols.values().next().value || false;
+  }
+});
 const browserWss = new WebSocket.Server({ noServer: true });
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
-
-const ocppWss = new WebSocket.Server({ 
-  noServer: true,
-  handleProtocols: (protocols, request) => {
-    if (protocols.has('ocpp1.6')) return 'ocpp1.6';
-    if (protocols.has('ocpp2.0.1')) return 'ocpp2.0.1';
-    return protocols.values().next().value || false;
-  }
-});
 
 // REST API endpoints
 app.get('/api/stations', (req, res) => {
@@ -116,11 +119,32 @@ app.post('/api/payment/process', (req, res) => {
 server.on('upgrade', (request, socket, head) => {
   const url = new URL(request.url, `http://${request.headers.host}`);
   
-  if (url.pathname.startsWith('/ocpp/')) {
+  // Check for OCPP subprotocol in request
+  const protocols = request.headers['sec-websocket-protocol'];
+  const isOCPP = protocols && protocols.toLowerCase().includes('ocpp');
+  
+  console.log(`[WS] Upgrade request: ${url.pathname}, protocols: ${protocols}`);
+  
+  // Accept multiple paths for OCPP: /ocpp/, /socketserver/, /ws/
+  const ocppPaths = ['/ocpp/', '/ocpp', '/socketserver/', '/socketserver', '/ws/', '/ws'];
+  const isOcppPath = ocppPaths.some(p => url.pathname.startsWith(p) || url.pathname === p);
+  
+  if (isOcppPath) {
     // OCPP charger connection
-    const chargerId = url.pathname.replace('/ocpp/', '');
+    // Extract charger ID from path - remove any known prefix
+    let chargerId = url.pathname
+      .replace('/ocpp/', '').replace('/ocpp', '')
+      .replace('/socketserver/', '').replace('/socketserver', '')
+      .replace('/ws/', '').replace('/ws', '');
+    
+    // If no ID in path, charger might send it differently - use a default
+    if (!chargerId) {
+      chargerId = 'unknown';
+    }
+    
     console.log(`[OCPP] Charger connecting: ${chargerId}`);
     
+    // Handle OCPP subprotocol negotiation
     ocppWss.handleUpgrade(request, socket, head, (ws) => {
       ws.chargerId = chargerId;
       ocppWss.emit('connection', ws, request);
@@ -131,6 +155,7 @@ server.on('upgrade', (request, socket, head) => {
       browserWss.emit('connection', ws, request);
     });
   } else {
+    console.log(`[WS] Unknown path, destroying: ${url.pathname}`);
     socket.destroy();
   }
 });
