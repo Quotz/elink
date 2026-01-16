@@ -17,7 +17,10 @@ const stations = {
     vendor: null,
     model: null,
     currentTransaction: null,
-    lastTransaction: null
+    lastTransaction: null,
+    connectedAt: null,
+    lastActivity: null,
+    connectionHistory: []
   },
   '002': {
     id: '002',
@@ -31,7 +34,10 @@ const stations = {
     vendor: null,
     model: null,
     currentTransaction: null,
-    lastTransaction: null
+    lastTransaction: null,
+    connectedAt: null,
+    lastActivity: null,
+    connectionHistory: []
   }
 };
 
@@ -60,8 +66,42 @@ module.exports = {
         connected: false,
         status: 'Offline',
         currentTransaction: null,
-        lastTransaction: null
+        lastTransaction: null,
+        connectedAt: null,
+        lastActivity: null,
+        connectionHistory: []
       };
+    }
+    
+    // Track activity timestamp on any update
+    const now = new Date().toISOString();
+    if (updates.connected !== undefined) {
+      updates.lastActivity = now;
+      if (updates.connected) {
+        updates.connectedAt = now;
+        // Add to connection history
+        if (!stations[id].connectionHistory) stations[id].connectionHistory = [];
+        stations[id].connectionHistory.push({
+          connectedAt: now,
+          disconnectedAt: null
+        });
+        // Keep only last 10 connection events
+        if (stations[id].connectionHistory.length > 10) {
+          stations[id].connectionHistory.shift();
+        }
+      } else {
+        // Mark last connection as disconnected
+        if (stations[id].connectionHistory && stations[id].connectionHistory.length > 0) {
+          const lastConnection = stations[id].connectionHistory[stations[id].connectionHistory.length - 1];
+          if (!lastConnection.disconnectedAt) {
+            lastConnection.disconnectedAt = now;
+          }
+        }
+        updates.connectedAt = null;
+      }
+    } else if (stations[id].connected) {
+      // Update activity timestamp if charger is connected
+      updates.lastActivity = now;
     }
     
     stations[id] = {
@@ -86,5 +126,21 @@ module.exports = {
   
   getChargerConnection(id) {
     return chargerConnections.get(id);
+  },
+  
+  getAdminStats() {
+    const all = Object.values(stations);
+    const connected = all.filter(s => s.connected);
+    const disconnected = all.filter(s => !s.connected);
+    
+    return {
+      total: all.length,
+      connected: connected.map(s => s.id),
+      disconnected: disconnected.map(s => s.id),
+      all: all.map(s => ({
+        ...s,
+        uptime: s.connectedAt ? Math.floor((Date.now() - new Date(s.connectedAt).getTime()) / 1000) : 0
+      }))
+    };
   }
 };

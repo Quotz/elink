@@ -64,6 +64,10 @@ ev-charging-app/
 3. ✅ Browser WebSocket connects (`/live` endpoint)
 4. ✅ OCPP subprotocol negotiation (returns `ocpp1.6` header)
 5. ✅ Local test passes: `node test-ocpp.js ws://localhost:3000/ocpp/001`
+6. ✅ Admin Panel - Real-time charger status monitoring at `/admin.html`
+7. ✅ Enhanced logging - Clear connection indicators in console
+8. ✅ Activity tracking - Timestamps for connections and last activity
+9. ✅ Auto-discovery - New chargers automatically added to system
 
 ## What's Not Working
 1. ❌ Real chargers not connecting to the server
@@ -215,6 +219,35 @@ git add .
 git commit -m "description"
 git push
 ```
+
+## Admin Panel
+
+The new admin panel provides real-time visibility into charger connections:
+
+**Access:** `http://localhost:3000/admin.html` or `https://elink-production.up.railway.app/admin.html`
+
+**Features:**
+- 🟢/🔴 Live connection status for all chargers
+- 📊 Quick stats: Total, Online, Offline counts
+- ⏱️ Connection uptime and last activity timestamps
+- 🔄 Real-time updates via WebSocket
+- 📱 Responsive design - works on mobile and desktop
+- 🤖 Auto-discovery: New chargers automatically appear when they connect
+
+**What You'll See:**
+- **Charger ID** - The unique identifier (001, 002, etc.)
+- **Connection Status** - Online/Offline with visual indicators
+- **OCPP Status** - Available, Charging, Faulted, etc.
+- **Vendor/Model** - From BootNotification message
+- **Uptime** - How long charger has been connected
+- **Last Seen** - For offline chargers, when they were last active
+
+**Use Cases:**
+- Debug which chargers are connecting vs. not connecting
+- Monitor connection stability (frequent disconnects?)
+- Verify new chargers are configured correctly
+- See real-time charger status changes
+- Identify chargers by their vendor/model info
 
 ## Priority Tasks
 

@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EV Charger Admin Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #666;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .stat-value.online {
+            color: #10b981;
+        }
+
+        .stat-value.offline {
+            color: #ef4444;
+        }
+
+        .chargers-grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .charger-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .charger-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .charger-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #f3f4f6;
+        }
+
+        .charger-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-indicator {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.online {
+            background: #10b981;
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+        }
+
+        .status-indicator.offline {
+            background: #ef4444;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            }
+            50% {
+                box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+            }
+        }
+
+        .charger-id {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .charger-name {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-badge.online {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-badge.offline {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-badge.charging {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .charger-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .detail-label {
+            font-size: 12px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .detail-value {
+            font-size: 16px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .connection-info {
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .connection-info strong {
+            color: #333;
+        }
+
+        .ws-status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 12px 20px;
+            border-radius: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ws-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+        }
+
+        .ws-indicator.disconnected {
+            background: #ef4444;
+        }
+
+        .last-update {
+            font-size: 12px;
+            color: #999;
+            text-align: center;
+            margin-top: 16px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state h2 {
+            font-size: 24px;
+            margin-bottom: 12px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚡ EV Charger Admin Panel</h1>
+            <p class="subtitle">Real-time monitoring of OCPP charger connections</p>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Chargers</div>
+                <div class="stat-value" id="total-count">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Online</div>
+                <div class="stat-value online" id="online-count">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Offline</div>
+                <div class="stat-value offline" id="offline-count">0</div>
+            </div>
+        </div>
+
+        <div class="chargers-grid" id="chargers-container">
+            <!-- Chargers will be inserted here -->
+        </div>
+
+        <div class="last-update" id="last-update">
+            Connecting...
+        </div>
+    </div>
+
+    <div class="ws-status">
+        <div class="ws-indicator" id="ws-indicator"></div>
+        <span id="ws-status-text">Connecting...</span>
+    </div>
+
+    <script>
+        let ws = null;
+        let reconnectTimer = null;
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/live`;
+            
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                console.log('[Admin] WebSocket connected');
+                updateWSStatus(true);
+                // Also fetch initial data via REST
+                fetchChargerData();
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'init' || data.type === 'update') {
+                    updateChargerDisplay(data.stations);
+                    updateLastUpdate();
+                }
+            };
+
+            ws.onclose = () => {
+                console.log('[Admin] WebSocket disconnected');
+                updateWSStatus(false);
+                // Try to reconnect after 3 seconds
+                if (reconnectTimer) clearTimeout(reconnectTimer);
+                reconnectTimer = setTimeout(connectWebSocket, 3000);
+            };
+
+            ws.onerror = (error) => {
+                console.error('[Admin] WebSocket error:', error);
+            };
+        }
+
+        async function fetchChargerData() {
+            try {
+                const response = await fetch('/api/admin/chargers');
+                const data = await response.json();
+                updateChargerDisplay(data.all);
+                updateStats(data);
+            } catch (error) {
+                console.error('Failed to fetch charger data:', error);
+            }
+        }
+
+        function updateWSStatus(connected) {
+            const indicator = document.getElementById('ws-indicator');
+            const statusText = document.getElementById('ws-status-text');
+            
+            if (connected) {
+                indicator.classList.remove('disconnected');
+                statusText.textContent = 'Connected';
+            } else {
+                indicator.classList.add('disconnected');
+                statusText.textContent = 'Disconnected';
+            }
+        }
+
+        function updateStats(data) {
+            document.getElementById('total-count').textContent = data.total || 0;
+            document.getElementById('online-count').textContent = data.connected?.length || 0;
+            document.getElementById('offline-count').textContent = data.disconnected?.length || 0;
+        }
+
+        function updateChargerDisplay(stations) {
+            const container = document.getElementById('chargers-container');
+            
+            if (!stations || stations.length === 0) {
+                container.innerHTML = `
+                    <div class="charger-card">
+                        <div class="empty-state">
+                            <h2>No chargers configured</h2>
+                            <p>Configure your chargers to connect to this server</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // Calculate stats
+            const online = stations.filter(s => s.connected).length;
+            const offline = stations.length - online;
+            updateStats({
+                total: stations.length,
+                connected: stations.filter(s => s.connected).map(s => s.id),
+                disconnected: stations.filter(s => !s.connected).map(s => s.id)
+            });
+
+            container.innerHTML = stations.map(station => {
+                const statusClass = station.connected ? 'online' : 'offline';
+                const statusText = station.connected ? 'Online' : 'Offline';
+                const chargerStatus = station.status || 'Unknown';
+                
+                let uptimeText = '-';
+                if (station.connected && station.connectedAt) {
+                    const uptime = Math.floor((Date.now() - new Date(station.connectedAt).getTime()) / 1000);
+                    uptimeText = formatUptime(uptime);
+                } else if (station.lastActivity) {
+                    const lastSeen = Math.floor((Date.now() - new Date(station.lastActivity).getTime()) / 1000);
+                    uptimeText = `Last seen: ${formatUptime(lastSeen)} ago`;
+                }
+
+                return `
+                    <div class="charger-card">
+                        <div class="charger-header">
+                            <div class="charger-title">
+                                <div class="status-indicator ${statusClass}"></div>
+                                <div>
+                                    <div class="charger-id">Charger ${station.id}</div>
+                                    <div class="charger-name">${station.name || 'Unknown'}</div>
+                                </div>
+                            </div>
+                            <div class="status-badge ${statusClass}">
+                                ${statusText}
+                            </div>
+                        </div>
+
+                        <div class="charger-details">
+                            <div class="detail-item">
+                                <div class="detail-label">Status</div>
+                                <div class="detail-value">${chargerStatus}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Power</div>
+                                <div class="detail-value">${station.power || 0} kW</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Vendor</div>
+                                <div class="detail-value">${station.vendor || '-'}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Model</div>
+                                <div class="detail-value">${station.model || '-'}</div>
+                            </div>
+                        </div>
+
+                        <div class="connection-info">
+                            <strong>Connection:</strong> ${uptimeText}
+                            ${station.currentTransaction ? `<br><strong>Transaction:</strong> Active (${station.currentTransaction.energy || 0} kWh)` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function formatUptime(seconds) {
+            if (seconds < 60) return `${seconds}s`;
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+            if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+            return `${Math.floor(seconds / 86400)}d ${Math.floor((seconds % 86400) / 3600)}h`;
+        }
+
+        function updateLastUpdate() {
+            const now = new Date();
+            document.getElementById('last-update').textContent = `Last updated: ${now.toLocaleTimeString()}`;
+        }
+
+        // Initialize on page load
+        connectWebSocket();
+        
+        // Refresh data every 5 seconds as backup
+        setInterval(fetchChargerData, 5000);
+    </script>
+</body>
+</html>

@@ -33,6 +33,10 @@ app.get('/api/stations', (req, res) => {
   res.json(store.getStations());
 });
 
+app.get('/api/admin/chargers', (req, res) => {
+  res.json(store.getAdminStats());
+});
+
 app.get('/api/stations/:id', (req, res) => {
   const station = store.getStation(req.params.id);
   if (station) {
@@ -164,7 +168,14 @@ server.on('upgrade', (request, socket, head) => {
 // OCPP WebSocket handling
 ocppWss.on('connection', (ws) => {
   const chargerId = ws.chargerId;
-  console.log(`[OCPP] Charger connected: ${chargerId}`);
+  const station = store.getStation(chargerId);
+  const stationName = station ? station.name : `Charger ${chargerId}`;
+  
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(`[CHARGER-STATUS] 🟢 CONNECTED: ${chargerId}`);
+  console.log(`[INFO] Name: ${stationName}`);
+  console.log(`[INFO] Time: ${new Date().toLocaleString()}`);
+  console.log(`${'='.repeat(60)}\n`);
   
   // Register charger connection
   store.setChargerConnection(chargerId, ws);
@@ -182,7 +193,15 @@ ocppWss.on('connection', (ws) => {
   });
   
   ws.on('close', () => {
-    console.log(`[OCPP] Charger disconnected: ${chargerId}`);
+    const station = store.getStation(chargerId);
+    const stationName = station ? station.name : `Charger ${chargerId}`;
+    
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`[CHARGER-STATUS] 🔴 DISCONNECTED: ${chargerId}`);
+    console.log(`[INFO] Name: ${stationName}`);
+    console.log(`[INFO] Time: ${new Date().toLocaleString()}`);
+    console.log(`${'='.repeat(60)}\n`);
+    
     store.setChargerConnection(chargerId, null);
     store.updateStation(chargerId, { connected: false, status: 'Offline' });
     broadcastUpdate();
@@ -227,8 +246,21 @@ module.exports = { broadcastUpdate };
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`- PWA: http://localhost:${PORT}`);
-  console.log(`- OCPP endpoint: ws://localhost:${PORT}/ocpp/{chargerId}`);
-  console.log(`- Browser WS: ws://localhost:${PORT}/live`);
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(`🚀 EV Charging Server Started`);
+  console.log(`${'='.repeat(60)}`);
+  console.log(`📱 PWA App:        http://localhost:${PORT}`);
+  console.log(`🔧 Admin Panel:    http://localhost:${PORT}/admin.html`);
+  console.log(`⚡ OCPP Endpoint:  ws://localhost:${PORT}/ocpp/{chargerId}`);
+  console.log(`🌐 Browser WS:     ws://localhost:${PORT}/live`);
+  console.log(`${'='.repeat(60)}`);
+  
+  // Display initial charger status
+  const stats = store.getAdminStats();
+  console.log(`\n📊 Initial Charger Status:`);
+  stats.all.forEach(station => {
+    const status = station.connected ? '🟢 ONLINE' : '🔴 OFFLINE';
+    console.log(`   ${status} - ${station.id}: ${station.name}`);
+  });
+  console.log(`\n⏳ Waiting for charger connections...\n`);
 });
