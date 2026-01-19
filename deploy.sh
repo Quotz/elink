@@ -64,6 +64,10 @@ ssh ${VPS_USER}@${VPS_HOST} << ENDSSH
   echo -e "${BLUE}📂 Navigating to app directory...${NC}"
   cd ${VPS_PATH}
   
+  echo -e "${BLUE}🔧 Cleaning up conflicts...${NC}"
+  git fetch origin ${GITHUB_BRANCH}
+  git reset --hard origin/${GITHUB_BRANCH}
+  
   echo -e "${BLUE}⬇️  Pulling latest code from GitHub...${NC}"
   git pull origin ${GITHUB_BRANCH}
   
