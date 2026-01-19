@@ -1,55 +1,93 @@
 /**
- * In-memory store for charging stations
- * In production, this would be a database
+ * Persistent store for charging stations
+ * Data is saved to stations.json file
  */
 
-// Pre-configured stations - UPDATE THESE with your actual charger IDs and locations
-const stations = {
-  '001': {
-    id: '001',
-    name: 'Station 1 - 7kW',
-    power: 7,
-    lat: 41.9981,  // Update with your actual coordinates
-    lng: 21.4254,  // Skopje area default
-    address: 'Location 1',
-    connected: false,
-    status: 'Offline',
-    vendor: null,
-    model: null,
-    currentTransaction: null,
-    lastTransaction: null,
-    lastHeartbeat: null,
-    connectedAt: null,
-    messageCount: 0,
-    sessionHistory: [],
-    configuration: null,
-    capabilities: null,
-    meterHistory: [],
-    diagnostics: {}
-  },
-  '002': {
-    id: '002',
-    name: 'Station 2 - 22kW',
-    power: 22,
-    lat: 42.0024,  // Update with your actual coordinates
-    lng: 21.4208,  // Skopje area default
-    address: 'Location 2',
-    connected: false,
-    status: 'Offline',
-    vendor: null,
-    model: null,
-    currentTransaction: null,
-    lastTransaction: null,
-    lastHeartbeat: null,
-    connectedAt: null,
-    messageCount: 0,
-    sessionHistory: [],
-    configuration: null,
-    capabilities: null,
-    meterHistory: [],
-    diagnostics: {}
+const fs = require('fs');
+const path = require('path');
+
+const STATIONS_FILE = path.join(__dirname, 'stations.json');
+
+// Load stations from file or use defaults
+let stations = {};
+
+function loadStations() {
+  try {
+    if (fs.existsSync(STATIONS_FILE)) {
+      const data = fs.readFileSync(STATIONS_FILE, 'utf8');
+      stations = JSON.parse(data);
+      console.log(`[Store] Loaded ${Object.keys(stations).length} stations from file`);
+    } else {
+      // Initialize with default stations if file doesn't exist
+      stations = getDefaultStations();
+      saveStations();
+      console.log('[Store] Created new stations file with defaults');
+    }
+  } catch (error) {
+    console.error('[Store] Error loading stations:', error);
+    stations = getDefaultStations();
   }
-};
+}
+
+function saveStations() {
+  try {
+    fs.writeFileSync(STATIONS_FILE, JSON.stringify(stations, null, 2), 'utf8');
+  } catch (error) {
+    console.error('[Store] Error saving stations:', error);
+  }
+}
+
+function getDefaultStations() {
+  return {
+    '001': {
+      id: '001',
+      name: 'Station 1 - 7kW',
+      power: 7,
+      lat: 41.9981,  // Update with your actual coordinates
+      lng: 21.4254,  // Skopje area default
+      address: 'Location 1',
+      connected: false,
+      status: 'Offline',
+      vendor: null,
+      model: null,
+      currentTransaction: null,
+      lastTransaction: null,
+      lastHeartbeat: null,
+      connectedAt: null,
+      messageCount: 0,
+      sessionHistory: [],
+      configuration: null,
+      capabilities: null,
+      meterHistory: [],
+      diagnostics: {}
+    },
+    '002': {
+      id: '002',
+      name: 'Station 2 - 22kW',
+      power: 22,
+      lat: 42.0024,  // Update with your actual coordinates
+      lng: 21.4208,  // Skopje area default
+      address: 'Location 2',
+      connected: false,
+      status: 'Offline',
+      vendor: null,
+      model: null,
+      currentTransaction: null,
+      lastTransaction: null,
+      lastHeartbeat: null,
+      connectedAt: null,
+      messageCount: 0,
+      sessionHistory: [],
+      configuration: null,
+      capabilities: null,
+      meterHistory: [],
+      diagnostics: {}
+    }
+  };
+}
+
+// Load stations on startup
+loadStations();
 
 // WebSocket connections for each charger
 const chargerConnections = new Map();
@@ -97,6 +135,12 @@ module.exports = {
         : stations[id].currentTransaction
     };
     
+    // Save persistent fields (name, power, lat, lng, address) to file
+    // Don't save runtime data (connected, status, transactions, etc.)
+    if (updates.name || updates.power || updates.lat || updates.lng || updates.address) {
+      saveStations();
+    }
+    
     return stations[id];
   },
   
@@ -130,8 +174,19 @@ module.exports = {
       vendor: null,
       model: null,
       currentTransaction: null,
-      lastTransaction: null
+      lastTransaction: null,
+      lastHeartbeat: null,
+      connectedAt: null,
+      messageCount: 0,
+      sessionHistory: [],
+      configuration: null,
+      capabilities: null,
+      meterHistory: [],
+      diagnostics: {}
     };
+    
+    // Save to file
+    saveStations();
     
     return stations[id];
   },
@@ -147,6 +202,10 @@ module.exports = {
     }
     
     delete stations[id];
+    
+    // Save to file
+    saveStations();
+    
     return true;
   }
 };
