@@ -115,6 +115,64 @@ app.post('/api/payment/process', (req, res) => {
   }, 1000);
 });
 
+// Admin API endpoints
+app.post('/api/stations', (req, res) => {
+  const { id, name, power, lat, lng, address } = req.body;
+  
+  if (!id) {
+    return res.status(400).json({ error: 'Station ID is required' });
+  }
+  
+  const station = store.createStation({ id, name, power, lat, lng, address });
+  
+  if (!station) {
+    return res.status(409).json({ error: 'Station with this ID already exists' });
+  }
+  
+  broadcastUpdate();
+  res.status(201).json(station);
+});
+
+app.put('/api/stations/:id', (req, res) => {
+  const { id } = req.params;
+  const { name, power, lat, lng, address } = req.body;
+  
+  const station = store.getStation(id);
+  if (!station) {
+    return res.status(404).json({ error: 'Station not found' });
+  }
+  
+  const updates = {};
+  if (name !== undefined) updates.name = name;
+  if (power !== undefined) updates.power = power;
+  if (lat !== undefined) updates.lat = lat;
+  if (lng !== undefined) updates.lng = lng;
+  if (address !== undefined) updates.address = address;
+  
+  const updatedStation = store.updateStation(id, updates);
+  broadcastUpdate();
+  res.json(updatedStation);
+});
+
+app.delete('/api/stations/:id', (req, res) => {
+  const { id } = req.params;
+  
+  const success = store.deleteStation(id);
+  
+  if (!success) {
+    const station = store.getStation(id);
+    if (!station) {
+      return res.status(404).json({ error: 'Station not found' });
+    }
+    if (station.connected) {
+      return res.status(400).json({ error: 'Cannot delete a connected charger' });
+    }
+  }
+  
+  broadcastUpdate();
+  res.json({ success: true, message: 'Station deleted' });
+});
+
 // Handle upgrade requests - route to correct WebSocket server
 server.on('upgrade', (request, socket, head) => {
   const url = new URL(request.url, `http://${request.headers.host}`);

@@ -86,5 +86,43 @@ module.exports = {
   
   getChargerConnection(id) {
     return chargerConnections.get(id);
+  },
+  
+  createStation(stationData) {
+    const id = stationData.id;
+    if (stations[id]) {
+      return null; // Station already exists
+    }
+    
+    stations[id] = {
+      id,
+      name: stationData.name || `Station ${id}`,
+      power: stationData.power || 0,
+      lat: stationData.lat || 42.0000,
+      lng: stationData.lng || 21.4300,
+      address: stationData.address || 'Unknown location',
+      connected: false,
+      status: 'Offline',
+      vendor: null,
+      model: null,
+      currentTransaction: null,
+      lastTransaction: null
+    };
+    
+    return stations[id];
+  },
+  
+  deleteStation(id) {
+    if (!stations[id]) {
+      return false;
+    }
+    
+    // Don't allow deletion of connected chargers
+    if (stations[id].connected) {
+      return false;
+    }
+    
+    delete stations[id];
+    return true;
   }
 };
