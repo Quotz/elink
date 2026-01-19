@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#7CB342">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>elink - EV Charging</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <img src="/E-Link-1024x500.png" alt="elink" class="logo">
+        <h1>EV Charging</h1>
+      </div>
+      <div class="header-right">
+        <div class="stats-badge" id="statsBadge">Loading...</div>
+        <div class="connection-status" id="connectionStatus">
+          <span class="dot offline"></span>
+          <span>Connecting...</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Map View -->
+    <div id="map"></div>
+
+    <!-- Station Panel (slides up when station selected) -->
+    <div class="panel" id="stationPanel">
+      <div class="panel-handle" onclick="closePanel()"></div>
+      
+      <!-- Station Info -->
+      <div class="station-header">
+        <h2 id="stationName">Station</h2>
+        <span class="status-badge" id="stationStatus">Offline</span>
+      </div>
+      
+      <div class="station-details">
+        <div class="detail-row">
+          <span class="label">Power Output</span>
+          <span class="value" id="stationPower">-- kW</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Connector Type</span>
+          <span class="value">Type 2 AC</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Address</span>
+          <span class="value" id="stationAddress">--</span>
+        </div>
+      </div>
+
+      <!-- Charging Status (shown during active session) -->
+      <div class="charging-display hidden" id="chargingDisplay">
+        <!-- Battery Indicator -->
+        <div class="battery-indicator">
+          <div class="battery-icon">
+            <div class="battery-fill" id="batteryFill" style="width: 0%"></div>
+          </div>
+          <div class="battery-info">
+            <div class="battery-percent" id="batteryPercent">0%</div>
+            <div class="battery-label">Battery Level</div>
+          </div>
+        </div>
+
+        <!-- Charging Stats -->
+        <div class="charging-stats">
+          <div class="stat">
+            <span class="stat-value" id="currentPower">0</span>
+            <span class="stat-unit">kW</span>
+            <span class="stat-label">Power</span>
+          </div>
+          <div class="stat primary">
+            <span class="stat-value" id="energyDelivered">0.00</span>
+            <span class="stat-unit">kWh</span>
+            <span class="stat-label">Energy</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="chargingTime">0:00</span>
+            <span class="stat-unit"></span>
+            <span class="stat-label">Duration</span>
+          </div>
+        </div>
+
+        <!-- Cost Display -->
+        <div class="cost-display">
+          <div class="cost-amount" id="costAmount">€0.00</div>
+          <div class="cost-label">Estimated Cost</div>
+        </div>
+
+        <!-- Charging Animation -->
+        <div class="charging-animation">
+          <div class="pulse"></div>
+          <span>Charging in progress...</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="actions" id="actions">
+        <button class="btn btn-primary" id="startBtn" onclick="showPayment()">
+          ⚡ Start Charging
+        </button>
+        <button class="btn btn-danger hidden" id="stopBtn" onclick="stopCharging()">
+          ⏹ Stop Charging
+        </button>
+      </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div class="modal hidden" id="paymentModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>💳 Payment Method</h3>
+          <button class="close-btn" onclick="closePayment()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="demo-notice">🔒 Demo Mode - Secure Payment Simulation</p>
+          
+          <div class="form-group">
+            <label>Card Number</label>
+            <input type="text" id="cardNumber" placeholder="4242 4242 4242 4242" 
+                   maxlength="19" inputmode="numeric">
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>Expiry</label>
+              <input type="text" id="cardExpiry" placeholder="MM/YY" maxlength="5">
+            </div>
+            <div class="form-group">
+              <label>CVV</label>
+              <input type="text" id="cardCvv" placeholder="123" maxlength="4" inputmode="numeric">
+            </div>
+          </div>
+          
+          <button class="btn btn-primary btn-full" id="payBtn" onclick="processPayment()">
+            Authorize & Start Charging
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Session Summary Modal -->
+    <div class="modal hidden" id="summaryModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>✅ Session Complete</h3>
+          <button class="close-btn" onclick="closeSummary()">&times;</button>
+        </div>
+        <div class="modal-body summary-content">
+          <div class="summary-icon">⚡</div>
+          <h3 class="summary-title">Charging Complete!</h3>
+          <p class="summary-subtitle">Thank you for charging with elink</p>
+          
+          <div class="summary-stats">
+            <div class="summary-stat">
+              <span class="summary-stat-label">Energy Delivered</span>
+              <span class="summary-stat-value" id="summaryEnergy">0.00 kWh</span>
+            </div>
+            <div class="summary-stat">
+              <span class="summary-stat-label">Charging Duration</span>
+              <span class="summary-stat-value" id="summaryDuration">0:00</span>
+            </div>
+            <div class="summary-stat">
+              <span class="summary-stat-label">Average Power</span>
+              <span class="summary-stat-value" id="summaryAvgPower">0 kW</span>
+            </div>
+            <div class="summary-stat">
+              <span class="summary-stat-label">Total Cost</span>
+              <span class="summary-stat-value highlight" id="summaryCost">€0.00</span>
+            </div>
+          </div>
+          
+          <button class="btn btn-primary btn-full" onclick="closeSummary()">
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast hidden" id="toast">
+      <span class="toast-icon">ℹ️</span>
+      <span id="toastMessage"></span>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
