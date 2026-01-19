@@ -79,6 +79,9 @@ function renderStations() {
   tbody.innerHTML = stations.map(station => {
     const statusClass = getStatusClass(station);
     const statusText = station.connected ? station.status : 'Offline';
+    const vendorModel = station.vendor && station.model 
+      ? `${station.vendor} ${station.model}` 
+      : (station.connected ? 'Unknown' : '—');
     
     return `
       <tr>
@@ -88,6 +91,7 @@ function renderStations() {
           <span class="status-dot status-${statusClass}"></span>
           ${statusText}
         </td>
+        <td style="font-size: 12px; color: #666;">${vendorModel}</td>
         <td>${station.power} kW</td>
         <td>${station.lat.toFixed(4)}, ${station.lng.toFixed(4)}</td>
         <td>${station.address}</td>
