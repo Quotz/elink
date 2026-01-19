@@ -17,7 +17,15 @@ const stations = {
     vendor: null,
     model: null,
     currentTransaction: null,
-    lastTransaction: null
+    lastTransaction: null,
+    lastHeartbeat: null,
+    connectedAt: null,
+    messageCount: 0,
+    sessionHistory: [],
+    configuration: null,
+    capabilities: null,
+    meterHistory: [],
+    diagnostics: {}
   },
   '002': {
     id: '002',
@@ -31,7 +39,15 @@ const stations = {
     vendor: null,
     model: null,
     currentTransaction: null,
-    lastTransaction: null
+    lastTransaction: null,
+    lastHeartbeat: null,
+    connectedAt: null,
+    messageCount: 0,
+    sessionHistory: [],
+    configuration: null,
+    capabilities: null,
+    meterHistory: [],
+    diagnostics: {}
   }
 };
 
@@ -60,7 +76,15 @@ module.exports = {
         connected: false,
         status: 'Offline',
         currentTransaction: null,
-        lastTransaction: null
+        lastTransaction: null,
+        lastHeartbeat: null,
+        connectedAt: null,
+        messageCount: 0,
+        sessionHistory: [],
+        configuration: null,
+        capabilities: null,
+        meterHistory: [],
+        diagnostics: {}
       };
     }
     

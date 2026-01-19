@@ -83,17 +83,63 @@ function renderStations() {
       ? `${station.vendor} ${station.model}` 
       : (station.connected ? 'Unknown' : '—');
     
+    // Calculate last heartbeat display
+    let lastSeenText = '—';
+    if (station.connected && station.lastHeartbeat) {
+      const timeSince = Date.now() - station.lastHeartbeat;
+      const secondsAgo = Math.floor(timeSince / 1000);
+      
+      if (secondsAgo < 15) {
+        lastSeenText = '<span style="color: #10b981;">● Active now</span>';
+      } else if (secondsAgo < 60) {
+        lastSeenText = `${secondsAgo}s ago`;
+      } else if (secondsAgo < 3600) {
+        lastSeenText = `${Math.floor(secondsAgo / 60)}m ago`;
+      } else {
+        lastSeenText = `${Math.floor(secondsAgo / 3600)}h ago`;
+      }
+    }
+    
+    // Calculate uptime
+    let uptimeText = '—';
+    if (station.connected && station.connectedAt) {
+      const uptime = Date.now() - station.connectedAt;
+      const hours = Math.floor(uptime / 3600000);
+      const minutes = Math.floor((uptime % 3600000) / 60000);
+      
+      if (hours > 0) {
+        uptimeText = `${hours}h ${minutes}m`;
+      } else {
+        uptimeText = `${minutes}m`;
+      }
+    }
+    
+    const messageCount = station.messageCount || 0;
+    
     return `
       <tr>
         <td><strong>${station.id}</strong></td>
-        <td>${station.name}</td>
+        <td>
+          ${station.name}
+          ${station.firmwareVersion ? `<br><small style="color: #666;">FW: ${station.firmwareVersion}</small>` : ''}
+        </td>
         <td>
           <span class="status-dot status-${statusClass}"></span>
           ${statusText}
+          <br><small style="color: #666;">${lastSeenText}</small>
         </td>
-        <td style="font-size: 12px; color: #666;">${vendorModel}</td>
-        <td>${station.power} kW</td>
-        <td>${station.lat.toFixed(4)}, ${station.lng.toFixed(4)}</td>
+        <td style="font-size: 12px; color: #666;">
+          ${vendorModel}
+          ${station.serialNumber ? `<br>SN: ${station.serialNumber}` : ''}
+        </td>
+        <td>
+          ${station.power} kW
+          <br><small style="color: #666;">Uptime: ${uptimeText}</small>
+        </td>
+        <td>
+          ${station.lat.toFixed(4)}, ${station.lng.toFixed(4)}
+          <br><small style="color: #666;">Messages: ${messageCount}</small>
+        </td>
         <td>${station.address}</td>
         <td>
           <div class="actions-cell">

@@ -5,6 +5,7 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { handleOCPPMessage, sendToCharger } = require('./ocpp-handler');
 const store = require('./store');
+const ocppCommands = require('./ocpp-commands');
 
 const app = express();
 const server = http.createServer(app);
@@ -173,6 +174,147 @@ app.delete('/api/stations/:id', (req, res) => {
   res.json({ success: true, message: 'Station deleted' });
 });
 
+// OCPP Command endpoints
+app.get('/api/stations/:id/configuration', async (req, res) => {
+  const { id } = req.params;
+  
+  const station = store.getStation(id);
+  if (!station) {
+    return res.status(404).json({ error: 'Station not found' });
+  }
+  
+  if (!station.connected) {
+    return res.status(400).json({ error: 'Charger is offline' });
+  }
+  
+  try {
+    const result = await ocppCommands.getConfiguration(id);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/stations/:id/trigger', async (req, res) => {
+  const { id } = req.params;
+  const { message, connectorId } = req.body;
+  
+  const station = store.getStation(id);
+  if (!station) {
+    return res.status(404).json({ error: 'Station not found' });
+  }
+  
+  if (!station.connected) {
+    return res.status(400).json({ error: 'Charger is offline' });
+  }
+  
+  try {
+    const result = await ocppCommands.triggerMessage(id, message, connectorId);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/stations/:id/configure', async (req, res) => {
+  const { id } = req.params;
+  const { key, value } = req.body;
+  
+  const station = store.getStation(id);
+  if (!station) {
+    return res.status(404).json({ error: 'Station not found' });
+  }
+  
+  if (!station.connected) {
+    return res.status(400).json({ error: 'Charger is offline' });
+  }
+  
+  try {
+    const result = await ocppCommands.changeConfiguration(id, key, value);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/stations/:id/diagnostics', async (req, res) => {
+  const { id } = req.params;
+  
+  const station = store.getStation(id);
+  if (!station) {
+    return res.status(404).json({ error: 'Station not found' });
+  }
+  
+  // Return stored diagnostics and configuration
+  res.json({
+    configuration: station.configuration || null,
+    capabilities: station.capabilities || null,
+    diagnostics: station.diagnostics || {},
+    vendor: station.vendor,
+    model: station.model,
+    serialNumber: station.serialNumber,
+    firmwareVersion: station.firmwareVersion
+  });
+});
+
+app.post('/api/stations/:id/reset', async (req, res) => {
+  const { id } = req.params;
+  const { type } = req.body; // 'Soft' or 'Hard'
+  
+  const station = store.getStation(id);
+  if (!station) {
+    return res.status(404).json({ error: 'Station not found' });
+  }
+  
+  if (!station.connected) {
+    return res.status(400).json({ error: 'Charger is offline' });
+  }
+  
+  try {
+    const result = await ocppCommands.reset(id, type || 'Soft');
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/stations/:id/unlock', async (req, res) => {
+  const { id } = req.params;
+  const { connectorId } = req.body;
+  
+  const station = store.getStation(id);
+  if (!station) {
+    return res.status(404).json({ error: 'Station not found' });
+  }
+  
+  if (!station.connected) {
+    return res.status(400).json({ error: 'Charger is offline' });
+  }
+  
+  try {
+    const result = await ocppCommands.unlockConnector(id, connectorId || 1);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Session history endpoint
+app.get('/api/stations/:id/sessions', (req, res) => {
+  const { id } = req.params;
+  
+  const station = store.getStation(id);
+  if (!station) {
+    return res.status(404).json({ error: 'Station not found' });
+  }
+  
+  res.json({
+    sessions: station.sessionHistory || [],
+    lastTransaction: station.lastTransaction || null,
+    currentTransaction: station.currentTransaction || null
+  });
+});
+
 // Handle upgrade requests - route to correct WebSocket server
 server.on('upgrade', (request, socket, head) => {
   const url = new URL(request.url, `http://${request.headers.host}`);
@@ -220,14 +362,40 @@ server.on('upgrade', (request, socket, head) => {
   }
 });
 
+// Timeout monitor - check for offline chargers every 30 seconds
+setInterval(() => {
+  const stations = store.getStations();
+  const now = Date.now();
+  const TIMEOUT_MS = 40000; // 40 seconds (allowing for 4 missed 10-second heartbeats)
+  
+  stations.forEach(station => {
+    if (station.connected && station.lastHeartbeat) {
+      const timeSinceLastHeartbeat = now - station.lastHeartbeat;
+      
+      if (timeSinceLastHeartbeat > TIMEOUT_MS) {
+        console.log(`[OCPP] Charger ${station.id} timed out (${Math.floor(timeSinceLastHeartbeat / 1000)}s since last heartbeat)`);
+        store.updateStation(station.id, {
+          connected: false,
+          status: 'Offline'
+        });
+        broadcastUpdate();
+      }
+    }
+  });
+}, 30000); // Check every 30 seconds
+
 // OCPP WebSocket handling
 ocppWss.on('connection', (ws) => {
   const chargerId = ws.chargerId;
   console.log(`[OCPP] Charger connected: ${chargerId}`);
   
-  // Register charger connection
+  // Register charger connection and set initial timestamps
   store.setChargerConnection(chargerId, ws);
-  store.updateStation(chargerId, { connected: true });
+  store.updateStation(chargerId, { 
+    connected: true,
+    lastHeartbeat: Date.now(),
+    connectedAt: Date.now()
+  });
   broadcastUpdate();
   
   ws.on('message', (data) => {

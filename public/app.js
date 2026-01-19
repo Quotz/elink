@@ -191,11 +191,32 @@ function updatePanel() {
   document.getElementById('stationPower').textContent = `${selectedStation.power} kW`;
   document.getElementById('stationAddress').textContent = selectedStation.address;
   
-  // Update status badge
+  // Update vendor/model info if available
+  if (selectedStation.vendor && selectedStation.model) {
+    const vendorInfo = `${selectedStation.vendor} ${selectedStation.model}`;
+    document.getElementById('stationAddress').textContent = `${selectedStation.address} • ${vendorInfo}`;
+  }
+  
+  // Update status badge with last seen time
   const statusBadge = document.getElementById('stationStatus');
-  const status = selectedStation.connected ? selectedStation.status : 'Offline';
+  let status = selectedStation.connected ? selectedStation.status : 'Offline';
+  
+  // Add last seen time for connected chargers
+  if (selectedStation.connected && selectedStation.lastHeartbeat) {
+    const timeSinceLastSeen = Date.now() - selectedStation.lastHeartbeat;
+    const secondsAgo = Math.floor(timeSinceLastSeen / 1000);
+    
+    let lastSeenText = '';
+    if (secondsAgo < 15) {
+      lastSeenText = ' • Active';
+    } else if (secondsAgo < 30) {
+      lastSeenText = ` • ${secondsAgo}s ago`;
+    }
+    status += lastSeenText;
+  }
+  
   statusBadge.textContent = status;
-  statusBadge.className = `status-badge ${status.toLowerCase()}`;
+  statusBadge.className = `status-badge ${selectedStation.connected ? selectedStation.status.toLowerCase() : 'offline'}`;
   
   // Update charging display
   const chargingDisplay = document.getElementById('chargingDisplay');
