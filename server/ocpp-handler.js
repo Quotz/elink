@@ -72,7 +72,7 @@ function handleChargerRequest(chargerId, messageId, action, payload, ws, broadca
       response = {
         status: 'Accepted',
         currentTime: new Date().toISOString(),
-        interval: 300 // Heartbeat interval in seconds
+        interval: 30 // Heartbeat interval in seconds (30s, with 40s timeout = safe margin)
       };
       break;
       
@@ -95,10 +95,34 @@ function handleChargerRequest(chargerId, messageId, action, payload, ws, broadca
         'Unavailable': 'Unavailable',
         'Faulted': 'Faulted'
       };
+      
+      const currentStation = store.getStation(chargerId);
+      const oldStatus = currentStation ? currentStation.status : 'Unknown';
+      const newStatus = statusMap[payload.status] || payload.status;
+      
+      // Log status transitions for debugging
+      if (oldStatus !== newStatus) {
+        console.log(`[OCPP] ${chargerId} status transition: ${oldStatus} → ${newStatus}`);
+        
+        // Log additional context for specific transitions
+        if (newStatus === 'Preparing') {
+          console.log(`[OCPP] ${chargerId} cable connected, waiting for RemoteStartTransaction`);
+        } else if (newStatus === 'Charging') {
+          console.log(`[OCPP] ${chargerId} charging session active`);
+        } else if (oldStatus === 'Preparing' && newStatus === 'Available') {
+          console.log(`[OCPP] ${chargerId} cable disconnected before charging started`);
+        } else if (newStatus === 'Suspended') {
+          console.log(`[OCPP] ${chargerId} charging paused (reason: ${payload.status})`);
+        } else if (newStatus === 'Faulted') {
+          console.log(`[OCPP] ${chargerId} FAULT: ${payload.errorCode || 'Unknown'} - ${payload.info || 'No details'}`);
+        }
+      }
+      
       store.updateStation(chargerId, {
-        status: statusMap[payload.status] || payload.status,
+        status: newStatus,
         errorCode: payload.errorCode,
-        connectorId: payload.connectorId
+        connectorId: payload.connectorId,
+        statusInfo: payload.info // Additional status information
       });
       response = {};
       break;

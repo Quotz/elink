@@ -197,22 +197,39 @@ function updatePanel() {
     document.getElementById('stationAddress').textContent = `${selectedStation.address} • ${vendorInfo}`;
   }
   
-  // Update status badge with last seen time
+  // Update status badge with last seen time and helpful text
   const statusBadge = document.getElementById('stationStatus');
   let status = selectedStation.connected ? selectedStation.status : 'Offline';
   
-  // Add last seen time for connected chargers
-  if (selectedStation.connected && selectedStation.lastHeartbeat) {
-    const timeSinceLastSeen = Date.now() - selectedStation.lastHeartbeat;
-    const secondsAgo = Math.floor(timeSinceLastSeen / 1000);
-    
-    let lastSeenText = '';
-    if (secondsAgo < 15) {
-      lastSeenText = ' • Active';
-    } else if (secondsAgo < 30) {
-      lastSeenText = ` • ${secondsAgo}s ago`;
+  // Add helpful context for specific states
+  if (selectedStation.connected) {
+    if (selectedStation.status === 'Preparing') {
+      status = '🔌 Cable Connected - Ready to Start';
+    } else if (selectedStation.status === 'Available') {
+      status = '✓ Available';
+    } else if (selectedStation.status === 'Charging') {
+      status = '⚡ Charging';
+    } else if (selectedStation.status === 'Finishing') {
+      status = 'Finishing Session...';
+    } else if (selectedStation.status === 'Suspended') {
+      status = '⏸ Charging Paused';
+    } else if (selectedStation.status === 'Faulted') {
+      status = '⚠️ Charger Error';
     }
-    status += lastSeenText;
+    
+    // Add last seen time for connected chargers
+    if (selectedStation.lastHeartbeat) {
+      const timeSinceLastSeen = Date.now() - selectedStation.lastHeartbeat;
+      const secondsAgo = Math.floor(timeSinceLastSeen / 1000);
+      
+      let lastSeenText = '';
+      if (secondsAgo < 15) {
+        lastSeenText = ' • Active';
+      } else if (secondsAgo < 30) {
+        lastSeenText = ` • ${secondsAgo}s ago`;
+      }
+      status += lastSeenText;
+    }
   }
   
   statusBadge.textContent = status;
@@ -274,7 +291,9 @@ function updatePanel() {
     };
     
     // Show/hide start button based on availability
-    if (selectedStation.connected && selectedStation.status === 'Available') {
+    // Allow starting from both "Available" (idle) and "Preparing" (cable plugged in)
+    if (selectedStation.connected && 
+        (selectedStation.status === 'Available' || selectedStation.status === 'Preparing')) {
       startBtn.classList.remove('hidden');
       startBtn.disabled = false;
     } else if (selectedStation.connected) {
