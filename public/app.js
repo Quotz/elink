@@ -247,23 +247,58 @@ function updatePanel() {
     stopBtn.classList.remove('hidden');
     
     // Update stats
-    const power = selectedStation.currentTransaction.power || 0;
-    const energy = parseFloat(selectedStation.currentTransaction.energy) || 0;
+    const tx = selectedStation.currentTransaction;
+    const power = tx.power || 0;
+    const energy = parseFloat(tx.energy) || 0;
+    const voltage = tx.voltage || 0;
+    const current = tx.current || 0;
+    const soc = tx.soc || 0;
+    const temperature = tx.temperature || 0;
     
-    document.getElementById('currentPower').textContent = (power / 1000).toFixed(1); // W to kW
-    document.getElementById('energyDelivered').textContent = energy.toFixed(2);
+    // Validate data quality
+    const dataAge = Date.now() - (selectedStation.lastHeartbeat || Date.now());
+    const isDataFresh = dataAge < 15000; // Data less than 15 seconds old
+    const hasActiveFlow = power > 100; // At least 100W
+    
+    // Display power with validation
+    const powerKw = (power / 1000).toFixed(1);
+    document.getElementById('currentPower').textContent = powerKw;
+    
+    // Show data quality indicator
+    const powerElement = document.getElementById('currentPower').parentElement;
+    if (!isDataFresh) {
+      powerElement.style.opacity = '0.6';
+      powerElement.title = 'Data may be stale';
+    } else if (!hasActiveFlow && tx.energy > 0) {
+      powerElement.style.opacity = '0.8';
+      powerElement.title = 'Charging may be paused';
+    } else {
+      powerElement.style.opacity = '1';
+      powerElement.title = '';
+    }
+    
+    // Validate and display energy
+    if (energy >= 0) {
+      document.getElementById('energyDelivered').textContent = energy.toFixed(2);
+    } else {
+      document.getElementById('energyDelivered').textContent = '0.00';
+      console.warn('[UI] Negative energy detected, displaying 0');
+    }
     
     // Update cost
-    const cost = energy * COST_PER_KWH;
+    const cost = Math.max(0, energy * COST_PER_KWH);
     document.getElementById('costAmount').textContent = `€${cost.toFixed(2)}`;
     
-    // Update battery indicator
-    updateBatteryIndicator(energy);
+    // Update battery indicator with real or estimated SoC
+    updateBatteryIndicator(energy, soc);
     
     // Track max power
     if (power > sessionData.maxPower) {
       sessionData.maxPower = power;
     }
+    
+    // Update technical data panel
+    updateTechnicalData(voltage, current, temperature, dataAge);
     
     // Start timer if not running
     if (!chargingTimer) {
@@ -305,15 +340,47 @@ function updatePanel() {
   }
 }
 
-function updateBatteryIndicator(energy) {
-  // Calculate battery percentage
-  // energy in kWh, assume starting at 20% and 60kWh battery
-  const energyAsPercent = (energy / BATTERY_CAPACITY) * 100;
-  let batteryPercent = Math.min(sessionData.startBattery + energyAsPercent, 100);
+function updateBatteryIndicator(energy, soc) {
+  let batteryPercent;
+  let isRealData = false;
   
-  // Update display
-  document.getElementById('batteryPercent').textContent = `${batteryPercent.toFixed(0)}%`;
-  document.getElementById('batteryFill').style.width = `${batteryPercent}%`;
+  // Use real SoC if available from the charger/EV
+  if (soc > 0 && soc <= 100) {
+    batteryPercent = soc;
+    isRealData = true;
+  } else {
+    // Fall back to calculated estimate based on energy delivered
+    const energyAsPercent = (energy / BATTERY_CAPACITY) * 100;
+    batteryPercent = Math.min(sessionData.startBattery + energyAsPercent, 100);
+  }
+  
+  // Ensure valid range
+  batteryPercent = Math.max(0, Math.min(100, batteryPercent));
+  
+  // Update display with indicator of data source
+  const batteryText = document.getElementById('batteryPercent');
+  if (isRealData) {
+    batteryText.textContent = `${batteryPercent.toFixed(0)}%`;
+    batteryText.title = 'Real-time battery level from vehicle';
+  } else {
+    batteryText.textContent = `~${batteryPercent.toFixed(0)}%`;
+    batteryText.title = 'Estimated battery level (vehicle data unavailable)';
+  }
+  
+  // Update visual fill
+  const batteryFill = document.getElementById('batteryFill');
+  batteryFill.style.width = `${batteryPercent}%`;
+  
+  // Color coding based on battery level
+  if (batteryPercent >= 80) {
+    batteryFill.style.background = 'linear-gradient(90deg, #10b981, #34d399)';
+  } else if (batteryPercent >= 50) {
+    batteryFill.style.background = 'linear-gradient(90deg, #3b82f6, #60a5fa)';
+  } else if (batteryPercent >= 20) {
+    batteryFill.style.background = 'linear-gradient(90deg, #f59e0b, #fbbf24)';
+  } else {
+    batteryFill.style.background = 'linear-gradient(90deg, #ef4444, #f87171)';
+  }
 }
 
 function updateChargingTime() {
@@ -542,6 +609,81 @@ function setupCardFormatting() {
     }
     e.target.value = value;
   });
+}
+
+// Technical data panel
+function updateTechnicalData(voltage, current, temperature, dataAge) {
+  const techPanel = document.getElementById('technicalData');
+  
+  // Show panel if we have any technical data
+  const hasTechData = voltage > 0 || current > 0 || temperature > 0;
+  
+  if (hasTechData) {
+    techPanel.style.display = 'block';
+    
+    // Update voltage
+    if (voltage > 0) {
+      document.getElementById('techVoltage').textContent = `${voltage.toFixed(1)} V`;
+      document.getElementById('techVoltage').style.color = voltage >= 200 && voltage <= 250 ? '#10b981' : '#f59e0b';
+    } else {
+      document.getElementById('techVoltage').textContent = '-- V';
+      document.getElementById('techVoltage').style.color = '#6b7280';
+    }
+    
+    // Update current
+    if (current > 0) {
+      document.getElementById('techCurrent').textContent = `${current.toFixed(1)} A`;
+      document.getElementById('techCurrent').style.color = current <= 32 ? '#10b981' : '#f59e0b';
+    } else {
+      document.getElementById('techCurrent').textContent = '-- A';
+      document.getElementById('techCurrent').style.color = '#6b7280';
+    }
+    
+    // Update temperature
+    if (temperature > 0) {
+      document.getElementById('techTemperature').textContent = `${temperature.toFixed(1)} °C`;
+      if (temperature < 50) {
+        document.getElementById('techTemperature').style.color = '#10b981'; // Green - safe
+      } else if (temperature < 70) {
+        document.getElementById('techTemperature').style.color = '#f59e0b'; // Yellow - warm
+      } else {
+        document.getElementById('techTemperature').style.color = '#ef4444'; // Red - hot
+      }
+    } else {
+      document.getElementById('techTemperature').textContent = '-- °C';
+      document.getElementById('techTemperature').style.color = '#6b7280';
+    }
+    
+    // Update max power
+    const maxPowerKw = (sessionData.maxPower / 1000).toFixed(1);
+    document.getElementById('techMaxPower').textContent = `${maxPowerKw} kW`;
+    
+    // Update data age
+    const ageSeconds = Math.floor(dataAge / 1000);
+    document.getElementById('techDataAge').textContent = `${ageSeconds} s`;
+    if (ageSeconds < 10) {
+      document.getElementById('techDataAge').style.color = '#10b981'; // Fresh
+    } else if (ageSeconds < 30) {
+      document.getElementById('techDataAge').style.color = '#f59e0b'; // Aging
+    } else {
+      document.getElementById('techDataAge').style.color = '#ef4444'; // Stale
+    }
+  } else {
+    techPanel.style.display = 'none';
+  }
+}
+
+function toggleTechnicalData() {
+  const content = document.getElementById('techContent');
+  const icon = document.getElementById('techToggleIcon');
+  
+  if (content.style.display === 'none') {
+    content.style.display = 'block';
+    icon.textContent = '▲';
+  } else {
+    content.style.display = 'none';
+    icon.textContent = '▼';
+  }
 }
 
 // Toast notifications

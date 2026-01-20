@@ -146,24 +146,33 @@ The EV charging PWA is now fully functional and production-ready! Both Phase 1 (
 ## Current Configuration
 
 ### Production Deployment
-- **URL**: https://elink-production.up.railway.app/
-- **Status**: Live and operational
-- **Chargers**: Both 001 and 002 connected
+- **URL**: https://ocpp.fankeeps.com/
+- **Admin Panel**: https://ocpp.fankeeps.com/admin.html
+- **Status**: Live and operational (JUST DEPLOYED - Jan 20, 2026 13:13)
+- **Hosting**: VPS (Ubuntu 22.04.5 LTS)
+- **VPS IP**: 46.224.209.188
+- **Process Manager**: PM2 (app name: "elink")
+- **Chargers**: Multiple chargers connected (30003567, 30004496, etc.)
 - **Uptime**: Stable with automatic timeout detection
 
 ### Charger Settings
 - **Charger 1**: UID `001`, 7kW AC
 - **Charger 2**: UID `002`, 22kW AC
-- **OCPP URL**: `wss://elink-production.up.railway.app:443/ocpp/`
+- **Additional Chargers**: 30003567, 30004496 (real hardware IDs)
+- **OCPP URL**: `wss://ocpp.fankeeps.com:443/ocpp/`
 - **Protocol**: OCPP 1.6-J with full subprotocol support
-- **Heartbeat**: 10-second interval (4 missed = timeout)
+- **Heartbeat**: 30-second interval (NEW - just fixed!)
+- **Timeout**: 40 seconds (safe 10s margin)
 
 ### Server Configuration
+- **Port**: 3000 (proxied via Nginx)
 - **OCPP Path**: `/ocpp/:chargerId`
 - **Browser WebSocket**: `/live`
 - **Admin Panel**: `/admin.html`
 - **Monitoring**: 30-second check interval, 40-second timeout
-- **SSL**: Automatic Railway-managed TLS
+- **SSL**: Nginx-managed TLS
+- **Data Persistence**: stations.json file on VPS
+- **Deployment**: Automated via deploy.sh script
 
 ## System Architecture (Current)
 
@@ -342,18 +351,19 @@ The system is fully functional and ready for demo. Any remaining work is optiona
 5. **Focus**: Optional enhancements only, or monitor stability
 
 **For demo preparation:**
-1. Open PWA: https://elink-production.up.railway.app/
-2. Open admin: https://elink-production.up.railway.app/admin.html
-3. Verify both chargers show "● Active now"
+1. Open PWA: https://ocpp.fankeeps.com/
+2. Open admin: https://ocpp.fankeeps.com/admin.html
+3. Verify all chargers show "● Active now"
 4. Test charging flow one final time
 5. Note session IDs and costs for demo talking points
 
 **If issues arise:**
-1. Check Railway logs for errors
+1. Check PM2 logs: `ssh root@46.224.209.188 "pm2 logs elink"`
 2. Verify charger displays show "Connected"
-3. Test with OCPP test script: `node test-ocpp.js wss://...`
+3. Test with OCPP test script: `node test-ocpp.js wss://ocpp.fankeeps.com/ocpp/001`
 4. Check admin panel for connection timestamps
-5. Restart chargers if needed (not server)
+5. Restart server: `ssh root@46.224.209.188 "pm2 restart elink"`
+6. Restart chargers if needed (not server unless critical)
 
 ## Monitoring & Health Checks
 

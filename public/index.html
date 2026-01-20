@@ -94,6 +94,36 @@
           <div class="cost-label">Estimated Cost</div>
         </div>
 
+        <!-- Technical Details (collapsible) -->
+        <div class="technical-data" id="technicalData" style="display: none;">
+          <div class="tech-header" onclick="toggleTechnicalData()">
+            <span>📊 Technical Data</span>
+            <span class="toggle-icon" id="techToggleIcon">▼</span>
+          </div>
+          <div class="tech-content" id="techContent" style="display: none;">
+            <div class="tech-row">
+              <span class="tech-label">Voltage</span>
+              <span class="tech-value" id="techVoltage">-- V</span>
+            </div>
+            <div class="tech-row">
+              <span class="tech-label">Current</span>
+              <span class="tech-value" id="techCurrent">-- A</span>
+            </div>
+            <div class="tech-row">
+              <span class="tech-label">Temperature</span>
+              <span class="tech-value" id="techTemperature">-- °C</span>
+            </div>
+            <div class="tech-row">
+              <span class="tech-label">Max Power</span>
+              <span class="tech-value" id="techMaxPower">-- kW</span>
+            </div>
+            <div class="tech-row">
+              <span class="tech-label">Data Age</span>
+              <span class="tech-value" id="techDataAge">-- s</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Charging Animation -->
         <div class="charging-animation">
           <div class="pulse"></div>

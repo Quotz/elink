@@ -450,6 +450,81 @@ body {
   opacity: 0.9;
 }
 
+/* Technical Data Panel */
+.technical-data {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 1;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.tech-header {
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.tech-header:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tech-header span {
+  font-size: 0.85rem;
+  font-weight: 600;
+  opacity: 0.95;
+}
+
+.toggle-icon {
+  font-size: 0.7rem;
+  transition: transform 0.3s;
+}
+
+.tech-content {
+  padding: 0 16px 12px;
+  animation: slide-down 0.3s ease;
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tech-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tech-row:last-child {
+  border-bottom: none;
+}
+
+.tech-label {
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+.tech-value {
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  transition: color 0.3s;
+}
+
 .charging-animation {
   display: flex;
   align-items: center;
