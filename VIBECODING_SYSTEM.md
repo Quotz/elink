@@ -234,3 +234,53 @@ When spawning agents, they should report back with:
 **Status:** ✅ Complete / ⚠️ Needs Review / ❌ Blocked
 **Next Steps:** [What needs to happen next]
 ```
+
+---
+
+# 📊 Current Status (v2.0)
+
+## ✅ What Was Built
+
+### 1. Database Layer (`server/database.js`)
+- **SQLite** with tables: users, charger_owners, charger_verifications, user_sessions, transactions, citrine_mappings
+
+### 2. Authentication System
+- JWT with access (15min) + refresh (7d) tokens
+- Registration/login with bcrypt
+- Email verification & password reset
+- Role-based access (driver/owner/admin)
+
+**Endpoints:** `/api/auth/*` (register, login, refresh, verify, reset, me)
+
+### 3. Charger Verification
+- Owner registration & charger submission
+- Admin review workflow
+- Document tracking
+
+**Endpoints:** `/api/verification/*` (submit, status, admin/review)
+
+### 4. CitrineOS Integration
+- REST API client for OCPP hub
+- Station sync & remote commands
+- Webhook events
+
+**Endpoints:** `/api/citrine/*` (health, stations, transactions, webhook)
+
+## 📋 Next Steps / TODO
+
+| Phase | Task | Status |
+|-------|------|--------|
+| 1 | Email SMTP setup | ⏳ Pending |
+| 2 | Frontend auth UI | ⏳ Pending |
+| 3 | Document upload (S3) | ⏳ Pending |
+| 4 | CitrineOS deployment | ⏳ Pending |
+| 5 | Production hardening | ⏳ Pending |
+
+## 🎉 Working Now
+✅ User registration & JWT auth  
+✅ Role-based access control  
+✅ Charger verification workflow  
+✅ CitrineOS API client  
+✅ SQLite database  
+
+**Commit:** `4cb854b` - v2.0 auth/CitrineOS features
