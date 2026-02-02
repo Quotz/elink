@@ -24,8 +24,12 @@
 - **PRD Generation**: `./scripts/prd-gen.sh fast|deep "feature"`
 - **E2E Testing**: `./scripts/test-e2e.sh`
 - **Agent Spawning**: `./scripts/spawn-from-prd.sh prd.md T1`
-- **MCP Equivalents**: See `docs/MCP_TOOLS.md`
 - **CLEAR Framework**: See `docs/PRD_SYSTEM.md`
+
+### Simplification Decision (2026-02-02)
+- **Not using MCP** - Overkill for single project
+- **Using native tools** - memory-bank, browser, file tools
+- **Keep it lean** - Fewer processes, less config
 
 ### Deferred (Post v2.0)
 - CitrineOS integration - Code ready, will add when scaling requires it

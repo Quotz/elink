@@ -253,7 +253,6 @@ elink/
 ├── memory-bank/              # Project context docs
 ├── docs/
 │   ├── history/              # Legacy docs
-│   ├── MCP_TOOLS.md          # MCP server equivalents
 │   └── PRD_SYSTEM.md         # CLEAR-based PRD generation
 ├── scripts/
 │   ├── deploy-staging.sh     # Staging deployment
