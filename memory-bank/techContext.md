@@ -251,7 +251,16 @@ elink/
 ├── public/                   # Static assets (PWA)
 ├── data/                     # SQLite DB (gitignored)
 ├── memory-bank/              # Project context docs
-├── docs/history/             # Legacy docs
+├── docs/
+│   ├── history/              # Legacy docs
+│   ├── MCP_TOOLS.md          # MCP server equivalents
+│   └── PRD_SYSTEM.md         # CLEAR-based PRD generation
+├── scripts/
+│   ├── deploy-staging.sh     # Staging deployment
+│   ├── prd-gen.sh            # PRD generator
+│   ├── spawn-from-prd.sh     # Agent spawner
+│   ├── test-e2e.sh           # E2E testing
+│   └── setup-hetzner.sh      # VPS provisioning
 ├── deploy.sh                 # Deployment script
 └── package.json
 ```

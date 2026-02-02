@@ -16,12 +16,19 @@
 
 ### Next Up (Prioritized)
 1. **VPS deployment testing** - Hetzner CX21, test with 1-2 chargers
-2. **Email SMTP integration** - Set up SendGrid/AWS SES
-3. **Frontend auth UI** - Login/register pages
-4. **Document upload system** - S3 integration for ownership proofs
+2. **Email SMTP integration** - Use PRD system to plan
+3. **Frontend auth UI** - Use PRD system to plan
+4. **Document upload system** - S3 integration
+
+### New Tools Ready (2026-02-02)
+- **PRD Generation**: `./scripts/prd-gen.sh fast|deep "feature"`
+- **E2E Testing**: `./scripts/test-e2e.sh`
+- **Agent Spawning**: `./scripts/spawn-from-prd.sh prd.md T1`
+- **MCP Equivalents**: See `docs/MCP_TOOLS.md`
+- **CLEAR Framework**: See `docs/PRD_SYSTEM.md`
 
 ### Deferred (Post v2.0)
-- CitrineOS integration - Will add when scaling requires it
+- CitrineOS integration - Code ready, will add when scaling requires it
 
 ## Active Decisions
 
