@@ -88,15 +88,23 @@ Ubuntu 22.04 LTS
                           │   (DNS + SSL)   │
                           └────────┬────────┘
                                    │
-              ┌────────────────────┼────────────────────┐
-              │                    │                    │
-              ▼                    ▼                    ▼
-    ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-    │  app.elink.mk   │  │ staging.elink   │  │  citrine.elink  │
-    │   (v1.0 Live)   │  │   .mk (v2.0)    │  │   .mk (future)  │
-    │                 │  │                 │  │                 │
-    │  Current VPS    │  │  Hetzner VPS    │  │  Hetzner/Other  │
-    └─────────────────┘  └─────────────────┘  └─────────────────┘
+                         ┌─────────┴─────────┐
+                         │                   │
+                         ▼                   ▼
+               ┌─────────────────┐  ┌─────────────────┐
+               │  app.elink.mk   │  │ staging.elink   │
+               │   (v1.0 Live)   │  │   .mk (v2.0)    │
+               │                 │  │                 │
+               │  Current VPS    │  │  Hetzner CX21   │
+               └─────────────────┘  └─────────────────┘
+               
+Future (when needed):
+               ┌─────────────────┐
+               │ citrine.elink   │
+               │   .mk (OCPP)    │
+               │                 │
+               │  Hetzner VPS    │
+               └─────────────────┘
 ```
 
 ## Migration Plan (Step by Step)
@@ -132,11 +140,18 @@ For each charger:
 4. Test start/stop
 5. Update DNS to point staging → production
 
-### Step 4: CitrineOS (Optional/Future)
-CitrineOS adds complexity. Recommendation:
-- **Phase 1**: Run v2.0 WITHOUT CitrineOS (use built-in OCPP)
-- **Phase 2**: Set up CitrineOS on separate server
-- **Phase 3**: Gradually migrate chargers to CitrineOS
+### Step 4: CitrineOS (DEFERRED - Not in v2.0)
+**Decision: CitrineOS is NOT part of v2.0 migration.**
+
+v2.0 uses the same built-in OCPP handler as v1.0. CitrineOS integration is:
+- Built and tested (citrine-client.js ready)
+- Disabled by default (no CITRINEOS_URL configured)
+- Available later when scaling requires it
+
+When to add CitrineOS:
+- 50+ chargers AND
+- Need OCPP 2.0.1 or advanced features AND
+- Have ops bandwidth for extra server
 
 ## Risk Mitigation
 
@@ -156,7 +171,7 @@ CitrineOS adds complexity. Recommendation:
 | Testing | 1-3 days | Auth flow, charger connection, stress test |
 | Migration prep | 4-8 hours | Migration scripts, backup strategy |
 | Production cutover | 2-4 hours | DNS switch, monitor, rollback plan |
-| CitrineOS setup | 1-2 days | (Optional) Separate server, config |
+| CitrineOS setup | (Future) | Deferred until scaling requires it |
 
 ## Cost Estimate
 

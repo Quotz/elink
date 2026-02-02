@@ -36,16 +36,14 @@
 | Document upload | ⏳ Not Started | Need S3/cloud storage |
 | Email notifications | ⏳ Not Started | Pending SMTP setup |
 
-### CitrineOS Integration (v2.0 - DEV)
+### CitrineOS Integration (FUTURE - Post v2.0)
 | Feature | Status | Notes |
 |---------|--------|-------|
-| REST client | ✅ Complete | All major endpoints |
-| Station sync | ✅ Complete | Push to CitrineOS |
-| Remote commands | ✅ Complete | Start/stop via CitrineOS |
-| Health check | ✅ Complete | Availability monitoring |
-| Webhook handler | ✅ Complete | Event processing |
-| Transaction sync | ⚠️ Partial | Basic structure, needs testing |
-| CitrineOS deployment | ⏳ Not Started | Waiting on infrastructure |
+| REST client | ✅ Built | Ready when needed |
+| Station sync | ⏳ Deferred | Will use when CitrineOS deployed |
+| CitrineOS deployment | ⏳ Deferred | Decision: Use v2.0 built-in OCPP first |
+
+**Decision (2026-02-02):** CitrineOS deferred. v2.0 uses built-in OCPP handler (same as v1.0). CitrineOS will be added later when scaler needs require it.
 
 ### Infrastructure
 | Feature | Status | Notes |

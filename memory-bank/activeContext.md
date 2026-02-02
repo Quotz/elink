@@ -14,11 +14,14 @@
 - [ ] Memory Bank implementation (this session)
 - [ ] Documentation consolidation
 
-### Next Up
-1. **Email SMTP integration** - Set up SendGrid/AWS SES for verification emails
-2. **Frontend auth UI** - Login/register pages, password reset flow
-3. **VPS deployment testing** - Test deploy.sh script on actual VPS
+### Next Up (Prioritized)
+1. **VPS deployment testing** - Hetzner CX21, test with 1-2 chargers
+2. **Email SMTP integration** - Set up SendGrid/AWS SES
+3. **Frontend auth UI** - Login/register pages
 4. **Document upload system** - S3 integration for ownership proofs
+
+### Deferred (Post v2.0)
+- CitrineOS integration - Will add when scaling requires it
 
 ## Active Decisions
 
