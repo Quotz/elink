@@ -1,96 +1,203 @@
 #!/bin/bash
+# eLink Deployment Safety & Rollback Script
+# Usage: ./deploy.sh [stable|dev|rollback]
 
-# EV Charging App Deployment Script
-# Usage: ./deploy.sh "commit message" or npm run deploy "commit message"
+set -e
+
+REPO_URL="https://github.com/quotz/elink.git"
+DEPLOY_DIR="/opt/elink"
+BACKUP_DIR="/opt/elink-backups"
+DB_FILE="data/elink.db"
+STATIONS_FILE="data/stations.json"
 
 # Colors for output
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
 RED='\033[0;31m'
+GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Configuration
-VPS_USER="root"
-VPS_HOST="46.224.209.188"
-VPS_PATH="/var/www/ev-charging-app"
-PM2_APP_NAME="elink"
-GITHUB_BRANCH="main"
+log() {
+    echo -e "${GREEN}[DEPLOY]${NC} $1"
+}
 
-echo -e "${BLUE}🚀 Starting deployment process...${NC}\n"
+warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
+}
 
-# Check if commit message is provided
-if [ -z "$1" ]; then
-  echo -e "${RED}❌ Error: Commit message required${NC}"
-  echo "Usage: npm run deploy \"your commit message\""
-  exit 1
-fi
+error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
 
-COMMIT_MSG="$1"
+# Create backup of current deployment
+backup_current() {
+    local backup_name="backup-$(date +%Y%m%d-%H%M%S)"
+    local backup_path="$BACKUP_DIR/$backup_name"
+    
+    log "Creating backup: $backup_name"
+    mkdir -p "$backup_path"
+    
+    if [ -d "$DEPLOY_DIR" ]; then
+        # Backup database and stations
+        cp "$DEPLOY_DIR/$DB_FILE" "$backup_path/" 2>/dev/null || warn "No database to backup"
+        cp "$DEPLOY_DIR/$STATIONS_FILE" "$backup_path/" 2>/dev/null || warn "No stations file to backup"
+        
+        # Backup current commit hash
+        cd "$DEPLOY_DIR"
+        git rev-parse HEAD > "$backup_path/commit-hash.txt"
+        
+        log "Backup created at $backup_path"
+        echo "$backup_name" > "$BACKUP_DIR/latest.txt"
+    fi
+}
 
-# Step 1: Check for uncommitted changes
-echo -e "${BLUE}📋 Step 1: Checking for changes...${NC}"
-if [[ -z $(git status -s) ]]; then
-  echo -e "${YELLOW}⚠️  No changes to commit${NC}"
-else
-  echo -e "${GREEN}✓ Changes detected${NC}"
-fi
+# Deploy stable version (v1.0)
+deploy_stable() {
+    log "Deploying STABLE version (v1.0-stable)..."
+    
+    backup_current
+    
+    if [ ! -d "$DEPLOY_DIR" ]; then
+        log "Cloning repository..."
+        git clone "$REPO_URL" "$DEPLOY_DIR"
+    fi
+    
+    cd "$DEPLOY_DIR"
+    
+    log "Checking out v1.0-stable..."
+    git fetch --tags
+    git checkout v1.0-stable
+    
+    log "Installing dependencies..."
+    npm install --production
+    
+    log "Restarting service..."
+    pm2 restart elink || pm2 start server/index.js --name elink
+    
+    log "✅ Stable version deployed!"
+    log "   URL: https://app.elink.mk"
+    log "   Version: $(git describe --tags)"
+}
 
-# Step 2: Git add all changes
-echo -e "\n${BLUE}📦 Step 2: Staging changes...${NC}"
-git add .
-echo -e "${GREEN}✓ Changes staged${NC}"
+# Deploy dev version (v2.0 with auth)
+deploy_dev() {
+    log "Deploying DEV version (v2.0-dev)..."
+    
+    backup_current
+    
+    if [ ! -d "$DEPLOY_DIR" ]; then
+        log "Cloning repository..."
+        git clone "$REPO_URL" "$DEPLOY_DIR"
+    fi
+    
+    cd "$DEPLOY_DIR"
+    
+    log "Checking out v2.0-dev..."
+    git fetch --tags
+    git checkout v2.0-dev
+    
+    log "Installing dependencies..."
+    npm install --production
+    
+    log "Setting up database..."
+    mkdir -p data
+    
+    log "Restarting service..."
+    pm2 restart elink || pm2 start server/index.js --name elink
+    
+    log "✅ Dev version deployed!"
+    log "   URL: https://app.elink.mk"
+    log "   Version: $(git describe --tags)"
+    log "   New endpoints:"
+    log "     - /api/auth/*"
+    log "     - /api/verification/*"
+    log "     - /api/citrine/*"
+}
 
-# Step 3: Commit changes
-echo -e "\n${BLUE}💾 Step 3: Committing changes...${NC}"
-git commit -m "$COMMIT_MSG" || echo -e "${YELLOW}⚠️  Nothing to commit or commit failed${NC}"
+# Rollback to previous backup
+rollback() {
+    if [ ! -f "$BACKUP_DIR/latest.txt" ]; then
+        error "No backup found to rollback to!"
+        exit 1
+    fi
+    
+    local backup_name=$(cat "$BACKUP_DIR/latest.txt")
+    local backup_path="$BACKUP_DIR/$backup_name"
+    
+    log "Rolling back to: $backup_name"
+    
+    if [ -f "$backup_path/commit-hash.txt" ]; then
+        local commit=$(cat "$backup_path/commit-hash.txt")
+        cd "$DEPLOY_DIR"
+        git checkout "$commit"
+        npm install --production
+    fi
+    
+    # Restore database if exists
+    if [ -f "$backup_path/elink.db" ]; then
+        cp "$backup_path/elink.db" "$DEPLOY_DIR/data/"
+        log "Database restored"
+    fi
+    
+    # Restore stations if exists
+    if [ -f "$backup_path/stations.json" ]; then
+        cp "$backup_path/stations.json" "$DEPLOY_DIR/data/"
+        log "Stations restored"
+    fi
+    
+    pm2 restart elink
+    
+    log "✅ Rollback complete!"
+}
 
-# Step 4: Push to GitHub
-echo -e "\n${BLUE}⬆️  Step 4: Pushing to GitHub...${NC}"
-git push origin $GITHUB_BRANCH
-if [ $? -eq 0 ]; then
-  echo -e "${GREEN}✓ Successfully pushed to GitHub${NC}"
-else
-  echo -e "${RED}❌ Failed to push to GitHub${NC}"
-  exit 1
-fi
+# Show status
+status() {
+    log "Deployment Status"
+    log "================="
+    
+    if [ -d "$DEPLOY_DIR" ]; then
+        cd "$DEPLOY_DIR"
+        log "Current version: $(git describe --tags 2>/dev/null || git rev-parse --short HEAD)"
+        log "Branch: $(git branch --show-current)"
+        log "Last commit: $(git log -1 --pretty=format:'%s (%ar)')"
+    else
+        warn "Not deployed yet"
+    fi
+    
+    log ""
+    log "Available backups:"
+    ls -1 "$BACKUP_DIR" 2>/dev/null | grep backup- || echo "  None"
+    
+    log ""
+    log "PM2 Status:"
+    pm2 status elink 2>/dev/null || warn "Service not running"
+}
 
-# Step 5: Deploy to VPS
-echo -e "\n${BLUE}🌐 Step 5: Deploying to VPS (${VPS_HOST})...${NC}"
-
-ssh ${VPS_USER}@${VPS_HOST} << ENDSSH
-  set -e
-  
-  echo -e "${BLUE}📂 Navigating to app directory...${NC}"
-  cd ${VPS_PATH}
-  
-  echo -e "${BLUE}🔧 Cleaning up conflicts...${NC}"
-  git fetch origin ${GITHUB_BRANCH}
-  git reset --hard origin/${GITHUB_BRANCH}
-  
-  echo -e "${BLUE}⬇️  Pulling latest code from GitHub...${NC}"
-  git pull origin ${GITHUB_BRANCH}
-  
-  echo -e "${BLUE}📦 Installing dependencies...${NC}"
-  npm install --production
-  
-  echo -e "${BLUE}🔄 Restarting PM2 application...${NC}"
-  pm2 restart ${PM2_APP_NAME}
-  
-  echo -e "${BLUE}✓ Deployment complete!${NC}"
-  
-  echo -e "\n${BLUE}📊 Application Status:${NC}"
-  pm2 status ${PM2_APP_NAME}
-  
-  echo -e "\n${BLUE}📝 Recent Logs:${NC}"
-  pm2 logs ${PM2_APP_NAME} --lines 10 --nostream
-ENDSSH
-
-if [ $? -eq 0 ]; then
-  echo -e "\n${GREEN}✅ Deployment successful!${NC}"
-  echo -e "${GREEN}🌐 Your app is live at: https://ocpp.fankeeps.com${NC}"
-  echo -e "${GREEN}⚙️  Admin panel: https://ocpp.fankeeps.com/admin.html${NC}"
-else
-  echo -e "\n${RED}❌ Deployment failed${NC}"
-  exit 1
-fi
+# Main command handler
+case "${1:-status}" in
+    stable)
+        deploy_stable
+        ;;
+    dev|develop)
+        deploy_dev
+        ;;
+    rollback)
+        rollback
+        ;;
+    status)
+        status
+        ;;
+    backup)
+        backup_current
+        ;;
+    *)
+        echo "Usage: $0 [stable|dev|rollback|status|backup]"
+        echo ""
+        echo "Commands:"
+        echo "  stable   - Deploy v1.0-stable (original version)"
+        echo "  dev      - Deploy v2.0-dev (with auth/CitrineOS)"
+        echo "  rollback - Rollback to previous backup"
+        echo "  status   - Show current deployment status"
+        echo "  backup   - Create manual backup"
+        exit 1
+        ;;
+esac
