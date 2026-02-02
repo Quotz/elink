@@ -7,6 +7,12 @@ const { handleOCPPMessage, sendToCharger } = require('./ocpp-handler');
 const store = require('./store');
 const ocppCommands = require('./ocpp-commands');
 
+// New imports for auth, verification, and CitrineOS
+const authRoutes = require('./routes/auth');
+const verificationRoutes = require('./routes/verification');
+const citrineRoutes = require('./routes/citrine');
+const { optionalAuth } = require('./auth');
+
 const app = express();
 const server = http.createServer(app);
 
@@ -29,6 +35,11 @@ const browserWss = new WebSocket.Server({ noServer: true });
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
+// New auth, verification, and CitrineOS routes
+app.use('/api/auth', authRoutes);
+app.use('/api/verification', verificationRoutes);
+app.use('/api/citrine', citrineRoutes);
+
 // REST API endpoints
 app.get('/api/stations', (req, res) => {
   res.json(store.getStations());
@@ -43,9 +54,9 @@ app.get('/api/stations/:id', (req, res) => {
   }
 });
 
-app.post('/api/stations/:id/start', (req, res) => {
+app.post('/api/stations/:id/start', optionalAuth, (req, res) => {
   const { id } = req.params;
-  const { idTag } = req.body; // RFID tag or generated token
+  const { idTag } = req.body;
   
   const station = store.getStation(id);
   if (!station) {
@@ -56,10 +67,13 @@ app.post('/api/stations/:id/start', (req, res) => {
     return res.status(400).json({ error: 'Charger is offline' });
   }
   
+  // Use authenticated user ID if available, otherwise use provided idTag or demo
+  const effectiveIdTag = req.user?.id || idTag || 'DEMO-TAG-001';
+  
   // Send RemoteStartTransaction to charger
   const success = sendToCharger(id, 'RemoteStartTransaction', {
     connectorId: 1,
-    idTag: idTag || 'DEMO-TAG-001'
+    idTag: effectiveIdTag
   });
   
   if (success) {
@@ -69,7 +83,7 @@ app.post('/api/stations/:id/start', (req, res) => {
   }
 });
 
-app.post('/api/stations/:id/stop', (req, res) => {
+app.post('/api/stations/:id/stop', optionalAuth, (req, res) => {
   const { id } = req.params;
   
   const station = store.getStation(id);
@@ -454,8 +468,16 @@ module.exports = { broadcastUpdate };
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`- PWA: http://localhost:${PORT}`);
-  console.log(`- OCPP endpoint: ws://localhost:${PORT}/ocpp/{chargerId}`);
-  console.log(`- Browser WS: ws://localhost:${PORT}/live`);
+  console.log(`╔════════════════════════════════════════════════════════════╗`);
+  console.log(`║              eLink EV Charging Server v2.0                 ║`);
+  console.log(`╠════════════════════════════════════════════════════════════╣`);
+  console.log(`║  PWA:           http://localhost:${PORT}                    ║`);
+  console.log(`║  OCPP Endpoint: ws://localhost:${PORT}/ocpp/{chargerId}     ║`);
+  console.log(`║  Browser WS:    ws://localhost:${PORT}/live                 ║`);
+  console.log(`║                                                            ║`);
+  console.log(`║  NEW API Endpoints:                                        ║`);
+  console.log(`║  • Auth:        /api/auth/* (register, login, verify)      ║`);
+  console.log(`║  • Verification:/api/verification/* (charger verify)       ║`);
+  console.log(`║  • CitrineOS:   /api/citrine/* (OCPP hub integration)      ║`);
+  console.log(`╚════════════════════════════════════════════════════════════╝`);
 });
