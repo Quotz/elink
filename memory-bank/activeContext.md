@@ -2,37 +2,46 @@
 
 ## Current Focus (2026-02-02)
 
+**GOAL: Demo/Presentation Ready App**
+
 ### Just Completed
-- [x] v2.0 auth system (JWT, roles, sessions)
-- [x] Charger verification workflow
-- [x] CitrineOS REST client integration
+- [x] v2.0 auth system (JWT, roles, sessions) - Backend ready
+- [x] Charger verification workflow - Backend ready
+- [x] CitrineOS REST client integration - Backend ready
 - [x] SQLite database schema
-- [x] Multi-agent vibecoding system setup
 - [x] Memory Bank documentation structure
+- [x] Staging deployment scripts
 
 ### In Progress
-- [ ] Memory Bank implementation (this session)
-- [ ] Documentation consolidation
+- [ ] **STAGING VPS DEPLOYMENT** - PRIORITY #1
+  - Need: Hetzner CX21 VPS
+  - Domain: staging.elink.mk
+  - Test with 1-2 chargers
 
-### Next Up (Prioritized)
-1. **VPS deployment testing** - Hetzner CX21, test with 1-2 chargers
-2. **Email SMTP integration** - Use PRD system to plan
-3. **Frontend auth UI** - Use PRD system to plan
-4. **Document upload system** - S3 integration
+### Demo Scope (What's Needed)
+| Feature | Backend | Frontend | Status |
+|---------|---------|----------|--------|
+| User auth API | ✅ | ⏳ Optional | Works via curl/API |
+| Charger status | ✅ | ✅ | Already works |
+| Start/stop charging | ✅ | ✅ | Already works |
+| Map display | ✅ | ✅ | Already works |
+| Real-time updates | ✅ | ✅ | WebSocket works |
+| **Email verification** | ⏳ | ❌ | **NOT NEEDED for demo** |
+| **Auth UI pages** | N/A | ⏳ | **NOT NEEDED for demo** |
 
-### New Tools Ready (2026-02-02)
-- **PRD Generation**: `./scripts/prd-gen.sh fast|deep "feature"`
-- **E2E Testing**: `./scripts/test-e2e.sh`
-- **Agent Spawning**: `./scripts/spawn-from-prd.sh prd.md T1`
-- **CLEAR Framework**: See `docs/PRD_SYSTEM.md`
+### What's NOT Needed for Demo
+- ❌ Email verification (tokens work, SMTP not needed)
+- ❌ Auth UI pages (API demo sufficient)
+- ❌ Document upload (backend API demo sufficient)
+- ❌ CitrineOS (built-in OCPP works)
 
-### Simplification Decision (2026-02-02)
-- **Not using MCP** - Overkill for single project
-- **Using native tools** - memory-bank, browser, file tools
-- **Keep it lean** - Fewer processes, less config
-
-### Deferred (Post v2.0)
-- CitrineOS integration - Code ready, will add when scaling requires it
+### Next Steps
+1. **Order Hetzner CX21** (~€5/mo)
+2. **Configure DNS** staging.elink.mk → VPS IP
+3. **Run setup-hetzner.sh** on VPS
+4. **Deploy v2.0** with deploy-staging.sh
+5. **Test with 1 charger** - Verify OCPP works
+6. **Demo ready!**
 
 ## Active Decisions
 

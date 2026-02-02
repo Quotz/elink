@@ -56,55 +56,48 @@
 
 ## What's Left to Build 📋
 
-### Phase 1: Email Integration (Priority: HIGH)
+### Phase 0: DEMO READY (Current Priority)
+**Goal: Working demo on staging VPS**
+- [ ] Order Hetzner CX21 VPS (~€5/mo)
+- [ ] Configure DNS: staging.elink.mk → VPS IP
+- [ ] Run setup-hetzner.sh on VPS
+- [ ] Deploy v2.0 with deploy-staging.sh
+- [ ] Test with 1 charger (OCPP connection)
+- [ ] Demo to stakeholders
+
+**Demo Scope:** Backend API demo sufficient. Auth works via curl/API. Frontend UI demo uses existing v1.0 pages.
+
+### Post-Demo (Future Work)
+
+#### Phase 1: Email Integration (NOT needed for demo)
 - [ ] Choose email provider (SendGrid/AWS SES/Mailgun)
 - [ ] Set up SMTP credentials
 - [ ] Implement email sending in auth routes
-- [ ] Create HTML email templates:
-  - [ ] Verification email
-  - [ ] Password reset email
-  - [ ] Welcome email
-  - [ ] Charger approved/rejected email
+- [ ] Create HTML email templates
 
-### Phase 2: Frontend Auth UI (Priority: HIGH)
+#### Phase 2: Frontend Auth UI (NOT needed for demo)
 - [ ] Login page
-- [ ] Registration page (driver/owner selection)
+- [ ] Registration page
 - [ ] Email verification page
-- [ ] Password reset request page
-- [ ] Password reset confirmation page
+- [ ] Password reset pages
 - [ ] User profile page
-- [ ] Protected route middleware (frontend)
-- [ ] Token refresh handling
 
-### Phase 3: Owner Dashboard (Priority: MEDIUM)
+#### Phase 3: Owner Dashboard (NOT needed for demo)
 - [ ] My Chargers list
 - [ ] Charger submission form
 - [ ] Document upload UI
-- [ ] Verification status display
 - [ ] Revenue/analytics view
 
-### Phase 4: Admin Panel (Priority: MEDIUM)
-- [ ] Pending verifications queue
-- [ ] Verification review UI
-- [ ] User management
-- [ ] System settings
-
-### Phase 5: Production Hardening (Priority: HIGH)
+#### Phase 4: Production Hardening
 - [ ] HTTPS/WSS enforcement
-- [ ] Rate limiting (express-rate-limit)
-- [ ] Input sanitization (express-validator)
-- [ ] Security headers (helmet)
-- [ ] CORS configuration
-- [ ] Production JWT secrets
-- [ ] Environment-based configs
-- [ ] Logging (winston/pino)
+- [ ] Rate limiting
+- [ ] Input sanitization
+- [ ] Security headers
+- [ ] Production secrets
 
-### Phase 6: CitrineOS Migration (Priority: LOW)
+#### Phase 5: CitrineOS (Optional/Future)
 - [ ] Deploy CitrineOS server
-- [ ] Configure webhook URL
-- [ ] Migrate existing chargers
-- [ ] Test full OCPP flow
-- [ ] Monitor stability
+- [ ] Migrate chargers when scaling
 
 ## Known Issues ⚠️
 
