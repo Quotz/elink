@@ -11,7 +11,14 @@ const ocppCommands = require('./ocpp-commands');
 const authRoutes = require('./routes/auth');
 const verificationRoutes = require('./routes/verification');
 const citrineRoutes = require('./routes/citrine');
+const reservationRoutes = require('./routes/reservations');
+const walletRoutes = require('./routes/wallet');
+const notificationRoutes = require('./routes/notifications');
 const { optionalAuth } = require('./auth');
+const { notifications } = require('./services');
+
+// Initialize services
+notifications.init();
 
 const app = express();
 const server = http.createServer(app);
@@ -39,6 +46,9 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.use('/api/auth', authRoutes);
 app.use('/api/verification', verificationRoutes);
 app.use('/api/citrine', citrineRoutes);
+app.use('/api/reservations', reservationRoutes);
+app.use('/api/wallet', walletRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // REST API endpoints
 app.get('/api/stations', (req, res) => {

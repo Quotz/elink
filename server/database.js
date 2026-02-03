@@ -139,6 +139,36 @@ class Database {
       );
 
       CREATE INDEX IF NOT EXISTS idx_citrine_elink ON citrine_mappings(elink_charger_id);
+
+      -- Reservations table
+      CREATE TABLE IF NOT EXISTS reservations (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        charger_id TEXT NOT NULL,
+        start_time INTEGER NOT NULL,
+        end_time INTEGER NOT NULL,
+        status TEXT DEFAULT 'active' CHECK(status IN ('active', 'completed', 'cancelled', 'expired')),
+        created_at INTEGER DEFAULT (unixepoch()),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_reservations_user ON reservations(user_id);
+      CREATE INDEX IF NOT EXISTS idx_reservations_charger ON reservations(charger_id);
+      CREATE INDEX IF NOT EXISTS idx_reservations_time ON reservations(start_time, end_time);
+      CREATE INDEX IF NOT EXISTS idx_reservations_status ON reservations(status);
+
+      -- User push notification tokens
+      CREATE TABLE IF NOT EXISTS push_tokens (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        token TEXT NOT NULL,
+        platform TEXT DEFAULT 'web' CHECK(platform IN ('web', 'android', 'ios')),
+        created_at INTEGER DEFAULT (unixepoch()),
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        UNIQUE(user_id, token)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_push_tokens_user ON push_tokens(user_id);
     `);
   }
 
@@ -488,6 +518,165 @@ class Database {
       this.db.run(
         'UPDATE citrine_mappings SET last_sync_at = unixepoch() WHERE elink_charger_id = ?',
         [elinkChargerId],
+        function(err) {
+          if (err) reject(err);
+          else resolve(this.changes > 0);
+        }
+      );
+    });
+  }
+
+  // Reservation methods
+  async createReservation({ userId, chargerId, startTime, endTime }) {
+    const id = uuidv4();
+    return new Promise((resolve, reject) => {
+      const sql = `
+        INSERT INTO reservations (id, user_id, charger_id, start_time, end_time, status)
+        VALUES (?, ?, ?, ?, ?, 'active')
+      `;
+      this.db.run(sql, [id, userId, chargerId, startTime, endTime], function(err) {
+        if (err) reject(err);
+        else resolve({ id, userId, chargerId, startTime, endTime, status: 'active' });
+      });
+    });
+  }
+
+  async getReservationById(id) {
+    return new Promise((resolve, reject) => {
+      this.db.get(
+        `SELECT r.*, u.email, u.first_name, u.last_name
+         FROM reservations r
+         JOIN users u ON r.user_id = u.id
+         WHERE r.id = ?`,
+        [id],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+  }
+
+  async getUserReservations(userId, activeOnly = false) {
+    return new Promise((resolve, reject) => {
+      let sql = `
+        SELECT r.*, 
+               (SELECT name FROM json_each(
+                 (SELECT json_array(json_object('id', id, 'name', name)) 
+                  FROM (SELECT id, name FROM stations WHERE id = r.charger_id))
+               )) as charger_name
+        FROM reservations r
+        WHERE r.user_id = ?
+      `;
+      if (activeOnly) {
+        sql += ` AND r.status = 'active' AND r.end_time > unixepoch()`;
+      }
+      sql += ` ORDER BY r.start_time DESC`;
+      
+      this.db.all(sql, [userId], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+  }
+
+  async getChargerReservations(chargerId, startTime, endTime) {
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        `SELECT * FROM reservations 
+         WHERE charger_id = ? 
+         AND status = 'active'
+         AND ((start_time <= ? AND end_time >= ?) OR (start_time >= ? AND start_time < ?))
+         ORDER BY start_time`,
+        [chargerId, endTime, startTime, startTime, endTime],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+  }
+
+  async cancelReservation(id, userId) {
+    return new Promise((resolve, reject) => {
+      this.db.run(
+        `UPDATE reservations SET status = 'cancelled' 
+         WHERE id = ? AND user_id = ? AND status = 'active'`,
+        [id, userId],
+        function(err) {
+          if (err) reject(err);
+          else resolve(this.changes > 0);
+        }
+      );
+    });
+  }
+
+  async hasActiveReservation(userId) {
+    return new Promise((resolve, reject) => {
+      this.db.get(
+        `SELECT COUNT(*) as count FROM reservations 
+         WHERE user_id = ? AND status = 'active' AND end_time > unixepoch()`,
+        [userId],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row.count > 0);
+        }
+      );
+    });
+  }
+
+  async getAllReservations(limit = 100) {
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        `SELECT r.*, u.email, u.first_name, u.last_name
+         FROM reservations r
+         JOIN users u ON r.user_id = u.id
+         ORDER BY r.created_at DESC
+         LIMIT ?`,
+        [limit],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+  }
+
+  // Push token methods
+  async savePushToken({ userId, token, platform = 'web' }) {
+    const id = uuidv4();
+    return new Promise((resolve, reject) => {
+      const sql = `
+        INSERT INTO push_tokens (id, user_id, token, platform)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(user_id, token) DO UPDATE SET
+          platform = excluded.platform
+      `;
+      this.db.run(sql, [id, userId, token, platform], function(err) {
+        if (err) reject(err);
+        else resolve({ id, userId, token, platform });
+      });
+    });
+  }
+
+  async getUserPushTokens(userId) {
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        'SELECT * FROM push_tokens WHERE user_id = ?',
+        [userId],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+  }
+
+  async deletePushToken(token) {
+    return new Promise((resolve, reject) => {
+      this.db.run(
+        'DELETE FROM push_tokens WHERE token = ?',
+        [token],
         function(err) {
           if (err) reject(err);
           else resolve(this.changes > 0);
