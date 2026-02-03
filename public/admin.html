@@ -523,11 +523,11 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // Auth check
+    // Auth check - allow any logged in user for demo
     const authToken = localStorage.getItem('accessToken');
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     
-    if (!authToken || user.role !== 'admin') {
+    if (!authToken) {
       window.location.href = '/login.html';
     }
 
