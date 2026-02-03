@@ -1,0 +1,27 @@
+{
+  "packageId": "mk.elink.app",
+  "host": "staging.elink.mk",
+  "name": "eLink EV Charging",
+  "launcherName": "eLink",
+  "display": "standalone",
+  "themeColor": "#7CB342",
+  "navigationColor": "#7CB342",
+  "navigationColorDark": "#689F38",
+  "navigationDividerColor": "#7CB342",
+  "navigationDividerColorDark": "#689F38",
+  "backgroundColor": "#7CB342",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://staging.elink.mk/E-Link-1024x500.png",
+  "maskableIconUrl": null,
+  "monochromeIconUrl": null,
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "android.keystore",
+    "alias": "elink"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli"
+}

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database');
-const { authenticate } = require('../auth');
+const { authenticateToken: authenticate } = require('../auth');
 
 // Register push token
 router.post('/token', authenticate, async (req, res) => {

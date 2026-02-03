@@ -560,11 +560,7 @@ class Database {
   async getUserReservations(userId, activeOnly = false) {
     return new Promise((resolve, reject) => {
       let sql = `
-        SELECT r.*, 
-               (SELECT name FROM json_each(
-                 (SELECT json_array(json_object('id', id, 'name', name)) 
-                  FROM (SELECT id, name FROM stations WHERE id = r.charger_id))
-               )) as charger_name
+        SELECT r.*
         FROM reservations r
         WHERE r.user_id = ?
       `;

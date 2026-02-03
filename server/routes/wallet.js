@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate } = require('../auth');
+const { authenticateToken: authenticate } = require('../auth');
 const { wallet } = require('../services');
 
 // Get wallet balance
