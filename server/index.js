@@ -14,9 +14,11 @@ const citrineRoutes = require('./routes/citrine');
 const reservationRoutes = require('./routes/reservations');
 const walletRoutes = require('./routes/wallet');
 const notificationRoutes = require('./routes/notifications');
+const userRoutes = require('./routes/users');
 const { optionalAuth } = require('./auth');
 const citrineClient = require('./citrine-client');
 const { notifications } = require('./services');
+const CitrinePoller = require('./citrine-poller');
 
 // Initialize services
 notifications.init();
@@ -50,6 +52,7 @@ app.use('/api/citrine', citrineRoutes);
 app.use('/api/reservations', reservationRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/users', userRoutes);
 
 // REST API endpoints
 app.get('/api/stations', (req, res) => {
@@ -480,22 +483,19 @@ module.exports = { broadcastUpdate };
 // Set broadcast function for CitrineOS webhook handler
 citrineRoutes.setBroadcastUpdate(broadcastUpdate);
 
-// Simple MVP demo mode: Auto-mark stations as online
+// CitrineOS Polling Service
 const USE_CITRINE_POLLING = process.env.USE_CITRINEOS === 'true';
+const citrinePoller = new CitrinePoller(broadcastUpdate);
 
 if (USE_CITRINE_POLLING) {
-  // Mark all stations online after 3 seconds (demo mode)
+  // Start polling CitrineOS for real status
   setTimeout(() => {
-    const stations = store.getStations();
-    for (const station of stations) {
-      store.updateStation(station.id, {
-        connected: true,
-        status: 'Available',
-        lastHeartbeat: Date.now()
-      });
-    }
-    broadcastUpdate();
-    console.log('[CitrineOS] Demo mode: All stations marked online');
+    citrinePoller.start();
+  }, 3000);
+} else {
+  // Fallback: Log that polling is disabled
+  setTimeout(() => {
+    console.log('[CitrineOS] Polling disabled (set USE_CITRINEOS=true to enable)');
   }, 3000);
 }
 

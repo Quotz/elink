@@ -5,15 +5,23 @@
 const jwt = require('jsonwebtoken');
 const db = require('./database');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'elink-dev-secret-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('[SECURITY] JWT_SECRET not set! Using fallback for development only.');
+  // In production, this should throw an error
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET must be set in production');
+  }
+}
+const FINAL_JWT_SECRET = JWT_SECRET || 'elink-dev-secret-change-in-production';
 const JWT_EXPIRES_IN = '15m';
 const REFRESH_TOKEN_EXPIRES_IN = '7d';
 const REFRESH_TOKEN_EXPIRES_MS = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
 
 // Generate tokens
 function generateTokens(userId) {
-  const accessToken = jwt.sign({ userId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-  const refreshToken = jwt.sign({ userId, type: 'refresh' }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
+  const accessToken = jwt.sign({ userId }, FINAL_JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  const refreshToken = jwt.sign({ userId, type: 'refresh' }, FINAL_JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
   
   return { accessToken, refreshToken };
 }
@@ -21,7 +29,7 @@ function generateTokens(userId) {
 // Verify access token
 function verifyAccessToken(token) {
   try {
-    return jwt.verify(token, JWT_SECRET);
+    return jwt.verify(token, FINAL_JWT_SECRET);
   } catch (err) {
     return null;
   }
@@ -30,7 +38,7 @@ function verifyAccessToken(token) {
 // Verify refresh token
 function verifyRefreshToken(token) {
   try {
-    return jwt.verify(token, JWT_SECRET);
+    return jwt.verify(token, FINAL_JWT_SECRET);
   } catch (err) {
     return null;
   }

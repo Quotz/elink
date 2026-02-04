@@ -680,6 +680,82 @@ class Database {
       );
     });
   }
+
+  // User profile update
+  async updateUserProfile(userId, { firstName, lastName, phone }) {
+    return new Promise((resolve, reject) => {
+      const updates = [];
+      const params = [];
+
+      if (firstName !== undefined) {
+        updates.push('first_name = ?');
+        params.push(firstName);
+      }
+      if (lastName !== undefined) {
+        updates.push('last_name = ?');
+        params.push(lastName);
+      }
+      if (phone !== undefined) {
+        updates.push('phone = ?');
+        params.push(phone);
+      }
+      
+      updates.push('updated_at = unixepoch()');
+      params.push(userId);
+
+      const sql = 'UPDATE users SET ' + updates.join(', ') + ' WHERE id = ? RETURNING *';
+      
+      this.db.get(sql, params, (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+  }
+
+  // Get user charging history (from transactions table)
+  async getUserChargingHistory(userId, limit = 50, offset = 0) {
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        'SELECT * FROM transactions WHERE user_id = ? ORDER BY start_time DESC LIMIT ? OFFSET ?',
+        [userId, limit, offset],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+  }
+
+  // Get user statistics
+  async getUserStats(userId) {
+    return new Promise((resolve, reject) => {
+      this.db.get(
+        'SELECT COUNT(*) as totalSessions, COALESCE(SUM(total_kwh), 0) as totalEnergyKwh, COALESCE(SUM(total_cost), 0) as totalSpent, MAX(created_at) as lastSession FROM transactions WHERE user_id = ? AND status = "completed"',
+        [userId],
+        (err, row) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          
+          // Get favorite charger
+          this.db.get(
+            'SELECT charger_id, COUNT(*) as count FROM transactions WHERE user_id = ? GROUP BY charger_id ORDER BY count DESC LIMIT 1',
+            [userId],
+            (err2, favRow) => {
+              if (err2) reject(err2);
+              else {
+                resolve({
+                  ...row,
+                  favoriteCharger: favRow ? favRow.charger_id : null
+                });
+              }
+            }
+          );
+        }
+      );
+    });
+  }
 }
 
 module.exports = new Database();

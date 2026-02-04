@@ -52,8 +52,8 @@ router.get('/stations/:id', authenticateToken, async (req, res) => {
 });
 
 // Sync eLink station to CitrineOS
-// NOTE: Public endpoint for demo - in production, require authentication
-router.post('/stations/:id/sync', async (req, res) => {
+// Requires admin authentication
+router.post('/stations/:id/sync', authenticateToken, requireRole('admin'), async (req, res) => {
   try {
     const store = require('../store');
     const station = store.getStation(req.params.id);
@@ -149,43 +149,28 @@ router.post('/stations/:id/configuration', authenticateToken, requireRole('admin
     res.json(result);
   } catch (error) {
     console.error('[CitrineOS] Change configuration error:', error);
-    res.status(500).json({ error: 'Failed to update configuration' });
+    res.status(500).json({ error: 'Failed to change configuration' });
   }
 });
 
-// List transactions from CitrineOS
-router.get('/transactions', authenticateToken, async (req, res) => {
+// Get transactions for a station
+router.get('/stations/:id/transactions', authenticateToken, async (req, res) => {
   try {
-    const { stationId, userId, startDate, endDate, limit } = req.query;
-    
-    const params = {};
-    if (stationId) params.stationId = stationId;
-    if (userId) params.userId = userId;
-    if (startDate) params.startDate = startDate;
-    if (endDate) params.endDate = endDate;
-    if (limit) params.limit = parseInt(limit);
-
-    const transactions = await citrineClient.listTransactions(params);
+    const transactions = await citrineClient.getTransactionsByStation(req.params.id);
     res.json({ transactions });
   } catch (error) {
-    console.error('[CitrineOS] List transactions error:', error);
+    console.error('[CitrineOS] Get transactions error:', error);
     res.status(500).json({ error: 'Failed to fetch transactions' });
   }
 });
 
-// Get specific transaction
-router.get('/transactions/:id', authenticateToken, async (req, res) => {
-  try {
-    const transaction = await citrineClient.getTransaction(req.params.id);
-    res.json(transaction);
-  } catch (error) {
-    console.error('[CitrineOS] Get transaction error:', error);
-    res.status(500).json({ error: 'Failed to fetch transaction' });
-  }
-});
-
 // Webhook endpoint for CitrineOS events
+// TODO: Add HMAC-SHA256 signature validation in production
 router.post('/webhook', async (req, res) => {
+  // Basic validation: check for required fields
+  if (!req.body || !req.body.event) {
+    return res.status(400).json({ error: 'Invalid webhook payload' });
+  }
   try {
     const { event, data } = req.body;
     
@@ -194,6 +179,7 @@ router.post('/webhook', async (req, res) => {
     // Handle various CitrineOS events
     // Handle CitrineOS OCPP events
     const store = require('../store');
+    let shouldNotify = false;
     
     switch (event) {
       case 'StatusNotification':
@@ -217,6 +203,7 @@ router.post('/webhook', async (req, res) => {
           connected: isConnected,
           lastHeartbeat: Date.now()
         });
+        shouldNotify = true;
         console.log(`[CitrineOS] StatusNotification: ${data.stationId} is now ${elinkStatus}`);
         break;
 
@@ -228,6 +215,7 @@ router.post('/webhook', async (req, res) => {
           connected: true,
           lastHeartbeat: Date.now()
         });
+        shouldNotify = true;
         console.log(`[CitrineOS] BootNotification: ${data.stationId} connected`);
         break;
 
@@ -242,6 +230,7 @@ router.post('/webhook', async (req, res) => {
           },
           status: 'Charging'
         });
+        shouldNotify = true;
         console.log(`[CitrineOS] StartTransaction: ${data.stationId} tx ${data.transactionId}`);
         break;
 
@@ -257,6 +246,7 @@ router.post('/webhook', async (req, res) => {
           },
           status: 'Available'
         });
+        shouldNotify = true;
         console.log(`[CitrineOS] StopTransaction: ${data.stationId} tx ${data.transactionId}`);
         break;
 
@@ -265,15 +255,57 @@ router.post('/webhook', async (req, res) => {
           connected: true,
           lastHeartbeat: Date.now()
         });
+        shouldNotify = true;
         console.log(`[CitrineOS] Heartbeat: ${data.stationId}`);
         break;
 
       case 'MeterValues':
-        // Store meter values - handled via polling for now
+        // Store meter values - update station with latest readings
+        if (data.values && data.values.length > 0) {
+          const power = data.values.find(v => v.measurand === 'Power.Active.Import') || 
+                        data.values.find(v => v.measurand === 'Power.Offered');
+          const voltage = data.values.find(v => v.measurand === 'Voltage');
+          const current = data.values.find(v => v.measurand === 'Current.Import');
+          const soc = data.values.find(v => v.measurand === 'SoC');
+          const temp = data.values.find(v => v.measurand === 'Temperature');
+          
+          const station = store.getStation(data.stationId);
+          if (station && station.currentTransaction) {
+            const updates = {
+              currentTransaction: {
+                ...station.currentTransaction,
+                ...(power && { power: power.value * (power.unit === 'kW' ? 1000 : 1) }),
+                ...(voltage && { voltage: voltage.value }),
+                ...(current && { current: current.value }),
+                ...(soc && { soc: soc.value }),
+                ...(temp && { temperature: temp.value })
+              }
+            };
+            
+            // Calculate energy if we have power and time
+            if (power && power.value > 0) {
+              const now = Date.now();
+              const lastUpdate = station.currentTransaction.lastMeterUpdate || station.currentTransaction.startTime;
+              const hoursElapsed = (now - lastUpdate) / (1000 * 60 * 60);
+              const powerKw = power.value * (power.unit === 'W' ? 0.001 : 1);
+              const additionalEnergy = powerKw * hoursElapsed;
+              updates.currentTransaction.energy = (station.currentTransaction.energy || 0) + additionalEnergy;
+              updates.currentTransaction.lastMeterUpdate = now;
+            }
+            
+            store.updateStation(data.stationId, updates);
+            shouldNotify = true;
+          }
+        }
         break;
 
       default:
         console.log('[CitrineOS Webhook] Unhandled event:', event);
+    }
+
+    // Notify all connected clients of the update
+    if (shouldNotify) {
+      notifyClients();
     }
 
     res.json({ received: true });

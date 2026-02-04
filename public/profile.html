@@ -307,6 +307,13 @@
     </div>
   </div>
 
+    <!-- Charging History -->
+    <div class="card">
+      <h2 class="card-title">Charging History</h2>
+      <div id="chargingHistoryList">
+        <div class="empty-state">No charging sessions yet</div>
+      </div>
+    </div>
   <!-- Top Up Modal -->
   <div class="modal hidden" id="topUpModal">
     <div class="modal-content">
@@ -423,6 +430,40 @@
         }).join('');
       } catch (error) {
         console.error('Failed to load reservations:', error);
+      }
+    }
+
+    async function loadChargingHistory() {
+      try {
+        const response = await fetch('/api/users/charging-history', {
+          headers: getAuthHeaders()
+        });
+        const data = await response.json();
+        
+        const container = document.getElementById('chargingHistoryList');
+        if (!data.history || data.history.length === 0) {
+          container.innerHTML = '<div class="empty-state">No charging sessions yet</div>';
+          return;
+        }
+
+        container.innerHTML = data.history.slice(0, 10).map(session => {
+          const date = new Date(session.startTime).toLocaleDateString();
+          const duration = session.endTime 
+            ? Math.round((new Date(session.endTime) - new Date(session.startTime)) / 60000) + ' min'
+            : 'In progress';
+          const energy = session.totalKwh ? session.totalKwh.toFixed(2) + ' kWh' : 'N/A';
+          const cost = session.totalCost ? '€' + session.totalCost.toFixed(2) : 'N/A';
+          
+          return `<div class="transaction-item">
+              <div>
+                <div class="transaction-type">Charger ${session.chargerId}</div>
+                <div class="transaction-date">${date} · ${duration} · ${energy}</div>
+              </div>
+              <div class="transaction-amount">${cost}</div>
+            </div>`;
+        }).join('');
+      } catch (error) {
+        console.error('Failed to load charging history:', error);
       }
     }
 
