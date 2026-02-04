@@ -192,33 +192,84 @@ router.post('/webhook', async (req, res) => {
     console.log('[CitrineOS Webhook]', event, data);
 
     // Handle various CitrineOS events
+    // Handle CitrineOS OCPP events
+    const store = require('../store');
+    
     switch (event) {
-      case 'transaction.started':
-        // Store transaction in local DB
-        await db.createTransaction({
-          userId: data.idTag, // This might need mapping
-          chargerId: data.stationId,
-          idTag: data.idTag,
-          startMeter: data.meterStart
-        });
-        break;
-
-      case 'transaction.stopped':
-        // Update transaction in local DB
-        // await db.completeTransaction({...})
-        break;
-
-      case 'status.changed':
-        // Update station status in store
-        const store = require('../store');
+      case 'StatusNotification':
+        // Map OCPP status to eLink status
+        const statusMap = {
+          'Available': 'Available',
+          'Preparing': 'Preparing',
+          'Charging': 'Charging',
+          'SuspendedEV': 'Suspended',
+          'SuspendedEVSE': 'Suspended',
+          'Finishing': 'Finishing',
+          'Reserved': 'Reserved',
+          'Unavailable': 'Offline',
+          'Faulted': 'Faulted'
+        };
+        const elinkStatus = statusMap[data.status] || data.status;
+        const isConnected = data.status !== 'Unavailable' && data.status !== 'Faulted';
+        
         store.updateStation(data.stationId, {
-          status: data.status,
-          connected: data.status !== 'Offline'
+          status: elinkStatus,
+          connected: isConnected,
+          lastHeartbeat: Date.now()
         });
+        console.log(`[CitrineOS] StatusNotification: ${data.stationId} is now ${elinkStatus}`);
         break;
 
-      case 'meter.values':
-        // Store meter values
+      case 'BootNotification':
+        store.updateStation(data.stationId, {
+          vendor: data.chargePointVendor,
+          model: data.chargePointModel,
+          firmwareVersion: data.firmwareVersion,
+          connected: true,
+          lastHeartbeat: Date.now()
+        });
+        console.log(`[CitrineOS] BootNotification: ${data.stationId} connected`);
+        break;
+
+      case 'StartTransaction':
+        store.updateStation(data.stationId, {
+          currentTransaction: {
+            id: String(data.transactionId),
+            idTag: data.idTag,
+            connectorId: data.connectorId,
+            startTime: Date.now(),
+            startMeter: data.meterStart
+          },
+          status: 'Charging'
+        });
+        console.log(`[CitrineOS] StartTransaction: ${data.stationId} tx ${data.transactionId}`);
+        break;
+
+      case 'StopTransaction':
+        const station = store.getStation(data.stationId);
+        store.updateStation(data.stationId, {
+          currentTransaction: null,
+          lastTransaction: {
+            id: String(data.transactionId),
+            energy: data.meterStop ? (data.meterStop - (station?.currentTransaction?.startMeter || 0)) / 1000 : 0,
+            startTime: station?.currentTransaction?.startTime,
+            endTime: Date.now()
+          },
+          status: 'Available'
+        });
+        console.log(`[CitrineOS] StopTransaction: ${data.stationId} tx ${data.transactionId}`);
+        break;
+
+      case 'Heartbeat':
+        store.updateStation(data.stationId, {
+          connected: true,
+          lastHeartbeat: Date.now()
+        });
+        console.log(`[CitrineOS] Heartbeat: ${data.stationId}`);
+        break;
+
+      case 'MeterValues':
+        // Store meter values - handled via polling for now
         break;
 
       default:
