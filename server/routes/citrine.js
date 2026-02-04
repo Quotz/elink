@@ -10,6 +10,19 @@ const { authenticateToken, requireRole } = require('../auth');
 
 // Note: '../database' and '../citrine-client' are correct since we're in server/routes/
 
+// Broadcast function for WebSocket updates (set by index.js)
+let broadcastUpdate = null;
+
+function setBroadcastUpdate(fn) {
+  broadcastUpdate = fn;
+}
+
+function notifyClients() {
+  if (broadcastUpdate) {
+    broadcastUpdate();
+  }
+}
+
 // Health check
 router.get('/health', async (req, res) => {
   const health = await citrineClient.healthCheck();
@@ -221,3 +234,4 @@ router.post('/webhook', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.setBroadcastUpdate = setBroadcastUpdate;
