@@ -190,15 +190,20 @@ class CitrineOSClient {
     }
   }
 
-  // Get all connected charging stations from CitrineOS
-  async getConnectedStations() {
+  // Check if station is connected to CitrineOS
+  // Uses a simple health check approach - if CitrineOS is up, we assume charger is connected
+  // For MVP demo: Just return true to show station as available
+  async isStationConnected(stationId) {
     try {
-      // Try to get status for our known station
-      const response = await this.client.get(`/ocpp/1.6/evdriver/chargingStatus?identifier=30001233`);
-      return response.data;
+      const health = await this.healthCheck();
+      if (health.available) {
+        // CitrineOS is running, assume charger is connected for demo
+        // In production, this would check actual connection status
+        return true;
+      }
+      return false;
     } catch (error) {
-      // If endpoint doesn't exist, return empty
-      return null;
+      return false;
     }
   }
 

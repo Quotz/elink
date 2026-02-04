@@ -480,13 +480,24 @@ module.exports = { broadcastUpdate };
 // Set broadcast function for CitrineOS webhook handler
 citrineRoutes.setBroadcastUpdate(broadcastUpdate);
 
-// CitrineOS Polling (for when webhooks aren't configured)
-// Polls CitrineOS for station status and updates eLink store
+// Simple MVP demo mode: Auto-mark stations as online
 const USE_CITRINE_POLLING = process.env.USE_CITRINEOS === 'true';
 
-// CitrineOS Polling disabled for MVP - webhook is the source of truth
-// Status updates come from CitrineOS webhooks, not polling
-console.log('[CitrineOS] Webhook mode enabled (no polling)');
+if (USE_CITRINE_POLLING) {
+  // Mark all stations online after 3 seconds (demo mode)
+  setTimeout(() => {
+    const stations = store.getStations();
+    for (const station of stations) {
+      store.updateStation(station.id, {
+        connected: true,
+        status: 'Available',
+        lastHeartbeat: Date.now()
+      });
+    }
+    broadcastUpdate();
+    console.log('[CitrineOS] Demo mode: All stations marked online');
+  }, 3000);
+}
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
