@@ -59,6 +59,21 @@ app.get('/api/stations', (req, res) => {
   res.json(store.getStations());
 });
 
+// Server status endpoint
+app.get('/api/status', (req, res) => {
+  const stations = store.getStations();
+  const demoStations = stations.filter(s => s.demoMode || s.connectionSource === 'demo').length;
+  const realStations = stations.filter(s => s.connectionSource === 'ocpp').length;
+  
+  res.json({
+    demoMode: DEMO_MODE,
+    demoStations,
+    realStations,
+    totalStations: stations.length,
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.get('/api/stations/:id', (req, res) => {
   const station = store.getStation(req.params.id);
   if (station) {
@@ -389,16 +404,17 @@ server.on('upgrade', (request, socket, head) => {
       .replace(/^\/socketserver\//i, '').replace(/^\/socketserver$/i, '')
       .replace(/^\/ws\//i, '').replace(/^\/ws$/i, '');
     
-    // If no ID in path, charger might send it differently - use a default
-    if (!chargerId) {
-      chargerId = 'unknown';
-    }
+    // If no ID in path, charger might send it in BootNotification
+    // We'll wait for the first message to identify it
+    const pathOnlyId = chargerId;
     
-    console.log(`[OCPP] Charger connecting: ${chargerId}`);
+    console.log(`[OCPP] Charger connecting on path: ${url.pathname}, extracted ID: ${pathOnlyId || '(none, will wait for BootNotification)'}`);
     
     // Handle OCPP subprotocol negotiation
     ocppWss.handleUpgrade(request, socket, head, (ws) => {
-      ws.chargerId = chargerId;
+      ws.pathChargerId = pathOnlyId;  // ID from URL path (if any)
+      ws.chargerId = pathOnlyId || null;  // Will be updated after BootNotification
+      ws.isIdentified = !!pathOnlyId;  // Flag to track if we know the real ID yet
       ocppWss.emit('connection', ws, request);
     });
   } else if (url.pathname === '/live') {
@@ -436,37 +452,68 @@ setInterval(() => {
 
 // OCPP WebSocket handling
 ocppWss.on('connection', (ws) => {
-  const chargerId = ws.chargerId;
-  console.log(`[OCPP] Charger connected: ${chargerId}`);
+  let chargerId = ws.chargerId;
+  let isIdentified = ws.isIdentified;
   
-  // Register charger connection and set initial timestamps
-  store.setChargerConnection(chargerId, ws);
-  store.updateStation(chargerId, { 
-    connected: true,
-    lastHeartbeat: Date.now(),
-    connectedAt: Date.now()
-  });
-  broadcastUpdate();
+  console.log(`[OCPP] WebSocket connected${chargerId ? ` (path ID: ${chargerId})` : ' (waiting for BootNotification)'}]`);
   
   ws.on('message', (data) => {
     try {
       const message = JSON.parse(data.toString());
+      const messageType = message[0];
+      
+      // If not yet identified, check for BootNotification to get charger ID
+      if (!isIdentified && messageType === 2) {
+        const [, messageId, action, payload] = message;
+        if (action === 'BootNotification' && payload.chargePointSerialNumber) {
+          chargerId = payload.chargePointSerialNumber;
+          ws.chargerId = chargerId;
+          isIdentified = true;
+          
+          console.log(`[OCPP] Identified charger from BootNotification: ${chargerId}`);
+          
+          // Register the connection now that we know the ID
+          store.setChargerConnection(chargerId, ws);
+          store.updateStation(chargerId, { 
+            connected: true,
+            lastHeartbeat: Date.now(),
+            connectedAt: Date.now(),
+            demoMode: false,
+            connectionSource: 'ocpp',
+            vendor: payload.chargePointVendor,
+            model: payload.chargePointModel,
+            serialNumber: payload.chargePointSerialNumber,
+            firmwareVersion: payload.firmwareVersion
+          });
+          broadcastUpdate();
+        }
+      }
+      
+      if (!chargerId) {
+        console.log(`[OCPP] Message from unidentified charger:`, JSON.stringify(message));
+        return;
+      }
+      
       console.log(`[OCPP] ${chargerId} ->`, JSON.stringify(message));
       handleOCPPMessage(chargerId, message, ws, broadcastUpdate);
     } catch (err) {
-      console.error(`[OCPP] Parse error from ${chargerId}:`, err);
+      console.error(`[OCPP] Parse error:`, err);
     }
   });
   
   ws.on('close', () => {
-    console.log(`[OCPP] Charger disconnected: ${chargerId}`);
-    store.setChargerConnection(chargerId, null);
-    store.updateStation(chargerId, { connected: false, status: 'Offline' });
-    broadcastUpdate();
+    if (chargerId) {
+      console.log(`[OCPP] Charger disconnected: ${chargerId}`);
+      store.setChargerConnection(chargerId, null);
+      store.updateStation(chargerId, { connected: false, status: 'Offline' });
+      broadcastUpdate();
+    } else {
+      console.log(`[OCPP] Unidentified charger disconnected`);
+    }
   });
   
   ws.on('error', (err) => {
-    console.error(`[OCPP] Error from ${chargerId}:`, err);
+    console.error(`[OCPP] Error${chargerId ? ` from ${chargerId}` : ''}:`, err);
   });
 });
 
@@ -509,7 +556,31 @@ citrineRoutes.setBroadcastUpdate(broadcastUpdate);
 const USE_CITRINE_POLLING = process.env.USE_CITRINEOS === 'true';
 const citrinePoller = new CitrinePoller(broadcastUpdate);
 
-if (USE_CITRINE_POLLING) {
+// Demo/Simulation Mode - Set DEMO_MODE=true to simulate chargers without real hardware
+// WARNING: This makes chargers appear connected when they're not actually communicating via OCPP
+const DEMO_MODE = process.env.DEMO_MODE === 'true';
+
+if (DEMO_MODE) {
+  console.log('╔════════════════════════════════════════════════════════════╗');
+  console.log('║  ⚠️  DEMO MODE ENABLED - Chargers will appear online       ║');
+  console.log('║     No real OCPP connection required                       ║');
+  console.log('╚════════════════════════════════════════════════════════════╝');
+  
+  setTimeout(() => {
+    const stations = store.getStations();
+    for (const station of stations) {
+      store.updateStation(station.id, {
+        connected: true,
+        status: 'Available',
+        lastHeartbeat: Date.now(),
+        demoMode: true,
+        connectionSource: 'demo'
+      });
+    }
+    broadcastUpdate();
+    console.log('[DEMO] All stations marked as simulated/online');
+  }, 3000);
+} else if (USE_CITRINE_POLLING) {
   // Start polling CitrineOS for real status
   setTimeout(() => {
     citrinePoller.start();
