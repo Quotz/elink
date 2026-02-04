@@ -39,21 +39,14 @@ router.get('/stations/:id', authenticateToken, async (req, res) => {
 });
 
 // Sync eLink station to CitrineOS
-router.post('/stations/:id/sync', authenticateToken, requireRole('admin', 'owner'), async (req, res) => {
+// NOTE: Public endpoint for demo - in production, require authentication
+router.post('/stations/:id/sync', async (req, res) => {
   try {
     const store = require('../store');
     const station = store.getStation(req.params.id);
     
     if (!station) {
       return res.status(404).json({ error: 'Station not found in eLink' });
-    }
-
-    // Check ownership for non-admins
-    if (req.user.role === 'owner') {
-      const owner = await db.getChargerOwner(station.id);
-      if (!owner || owner.user_id !== req.user.id) {
-        return res.status(403).json({ error: 'You do not own this charger' });
-      }
     }
 
     const result = await citrineClient.syncStation(station);
