@@ -12,6 +12,7 @@ const authRoutes = require('./routes/auth');
 const verificationRoutes = require('./routes/verification');
 const citrineRoutes = require('./routes/citrine');
 const { optionalAuth } = require('./auth');
+const citrineClient = require('./citrine-client');
 
 const app = express();
 const server = http.createServer(app);
@@ -465,6 +466,80 @@ function broadcastUpdate() {
 
 // Make broadcastUpdate available to ocpp-handler
 module.exports = { broadcastUpdate };
+
+// Set broadcast function for CitrineOS webhook handler
+citrineRoutes.setBroadcastUpdate(broadcastUpdate);
+
+// CitrineOS Polling (for when webhooks aren't configured)
+// Polls CitrineOS for station status and updates eLink store
+const USE_CITRINE_POLLING = process.env.USE_CITRINEOS === 'true';
+
+if (USE_CITRINE_POLLING) {
+  const CITRINE_POLL_INTERVAL = 10000; // 10 seconds
+  
+  async function pollCitrineStatus() {
+    try {
+      // Get all stations from store
+      const stations = store.getStations();
+      
+      for (const station of stations) {
+        try {
+          // Try to get status from CitrineOS
+          const status = await citrineClient.getStationStatus(station.id);
+          
+          if (status && status.connectors && status.connectors.length > 0) {
+            const connector = status.connectors[0];
+            const isConnected = connector.status !== 'Unavailable' && connector.status !== 'Faulted';
+            
+            // Map CitrineOS status to eLink status
+            const statusMap = {
+              'Available': 'Available',
+              'Preparing': 'Preparing',
+              'Charging': 'Charging',
+              'SuspendedEV': 'Suspended',
+              'SuspendedEVSE': 'Suspended',
+              'Finishing': 'Finishing',
+              'Reserved': 'Reserved',
+              'Unavailable': 'Offline',
+              'Faulted': 'Faulted'
+            };
+            
+            const elinkStatus = statusMap[connector.status] || connector.status;
+            
+            // Update station in store
+            store.updateStation(station.id, {
+              connected: isConnected,
+              status: elinkStatus,
+              lastHeartbeat: Date.now()
+            });
+            
+            console.log(`[CitrineOS Poll] Station ${station.id}: ${connector.status}`);
+          }
+        } catch (err) {
+          // Station not found in CitrineOS or error - mark as offline
+          if (station.connected) {
+            store.updateStation(station.id, {
+              connected: false,
+              status: 'Offline'
+            });
+          }
+        }
+      }
+      
+      // Broadcast update to all clients
+      broadcastUpdate();
+    } catch (error) {
+      console.error('[CitrineOS Poll] Error:', error.message);
+    }
+  }
+  
+  // Start polling
+  setInterval(pollCitrineStatus, CITRINE_POLL_INTERVAL);
+  console.log('[CitrineOS] Polling enabled (10s interval)');
+  
+  // Initial poll after 2 seconds
+  setTimeout(pollCitrineStatus, 2000);
+}
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

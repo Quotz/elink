@@ -179,6 +179,18 @@ class CitrineOSClient {
     return response.data;
   }
 
+  // Get all connected charging stations from CitrineOS
+  async getConnectedStations() {
+    try {
+      // Try to get status for our known station
+      const response = await this.client.get(`/ocpp/1.6/evdriver/chargingStatus?identifier=30001233`);
+      return response.data;
+    } catch (error) {
+      // If endpoint doesn't exist, return empty
+      return null;
+    }
+  }
+
   // Webhook/Event Management
   // Note: CitrineOS can send webhooks for events - configure webhook URL in CitrineOS
 
