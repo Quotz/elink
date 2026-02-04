@@ -68,7 +68,7 @@ app.get('/api/stations/:id', (req, res) => {
   }
 });
 
-app.post('/api/stations/:id/start', optionalAuth, (req, res) => {
+app.post('/api/stations/:id/start', optionalAuth, async (req, res) => {
   const { id } = req.params;
   const { idTag } = req.body;
   
@@ -84,20 +84,31 @@ app.post('/api/stations/:id/start', optionalAuth, (req, res) => {
   // Use authenticated user ID if available, otherwise use provided idTag or demo
   const effectiveIdTag = req.user?.id || idTag || 'DEMO-TAG-001';
   
-  // Send RemoteStartTransaction to charger
-  const success = sendToCharger(id, 'RemoteStartTransaction', {
-    connectorId: 1,
-    idTag: effectiveIdTag
-  });
-  
-  if (success) {
-    res.json({ status: 'requested', message: 'Start command sent to charger' });
+  // If CitrineOS mode is enabled, use CitrineOS API
+  if (USE_CITRINE_POLLING) {
+    try {
+      const result = await citrineClient.remoteStartTransaction(id, 1, effectiveIdTag);
+      res.json({ status: 'requested', message: 'Start command sent via CitrineOS', result });
+    } catch (error) {
+      console.error('[Start] CitrineOS error:', error);
+      res.status(500).json({ error: 'Failed to send command via CitrineOS' });
+    }
   } else {
-    res.status(500).json({ error: 'Failed to send command' });
+    // Direct OCPP mode
+    const success = sendToCharger(id, 'RemoteStartTransaction', {
+      connectorId: 1,
+      idTag: effectiveIdTag
+    });
+    
+    if (success) {
+      res.json({ status: 'requested', message: 'Start command sent to charger' });
+    } else {
+      res.status(500).json({ error: 'Failed to send command' });
+    }
   }
 });
 
-app.post('/api/stations/:id/stop', optionalAuth, (req, res) => {
+app.post('/api/stations/:id/stop', optionalAuth, async (req, res) => {
   const { id } = req.params;
   
   const station = store.getStation(id);
@@ -109,15 +120,26 @@ app.post('/api/stations/:id/stop', optionalAuth, (req, res) => {
     return res.status(400).json({ error: 'No active transaction' });
   }
   
-  // Send RemoteStopTransaction to charger
-  const success = sendToCharger(id, 'RemoteStopTransaction', {
-    transactionId: station.currentTransaction.id
-  });
-  
-  if (success) {
-    res.json({ status: 'requested', message: 'Stop command sent to charger' });
+  // If CitrineOS mode is enabled, use CitrineOS API
+  if (USE_CITRINE_POLLING) {
+    try {
+      const result = await citrineClient.remoteStopTransaction(id, station.currentTransaction.id);
+      res.json({ status: 'requested', message: 'Stop command sent via CitrineOS', result });
+    } catch (error) {
+      console.error('[Stop] CitrineOS error:', error);
+      res.status(500).json({ error: 'Failed to send command via CitrineOS' });
+    }
   } else {
-    res.status(500).json({ error: 'Failed to send command' });
+    // Direct OCPP mode
+    const success = sendToCharger(id, 'RemoteStopTransaction', {
+      transactionId: station.currentTransaction.id
+    });
+    
+    if (success) {
+      res.json({ status: 'requested', message: 'Stop command sent to charger' });
+    } else {
+      res.status(500).json({ error: 'Failed to send command' });
+    }
   }
 });
 
