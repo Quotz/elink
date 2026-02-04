@@ -6,6 +6,8 @@ let selectedStation = null;
 let ws = null;
 let chargingStartTime = null;
 let chargingTimer = null;
+let citrineStatus = { available: false }; // Track CitrineOS connection status
+let citrineStationStatus = {}; // Per-station CitrineOS status cache
 
 // Configuration
 const COST_PER_KWH = 0.35; // €0.35 per kWh (typical price in Macedonia)
@@ -24,7 +26,11 @@ document.addEventListener('DOMContentLoaded', () => {
   initMap();
   connectWebSocket();
   setupCardFormatting();
+  checkCitrineStatus(); // Check CitrineOS connection
   updateHeaderStats(); // Initial stats
+  
+  // Check CitrineOS status periodically
+  setInterval(checkCitrineStatus, 30000);
 });
 
 // Initialize Leaflet map
@@ -699,6 +705,65 @@ function showToast(message, type = '', icon = 'ℹ️') {
   setTimeout(() => {
     toast.classList.add('hidden');
   }, 3000);
+}
+
+// CitrineOS Integration Functions
+
+async function checkCitrineStatus() {
+  try {
+    const response = await fetch('/api/citrine/health');
+    if (response.ok) {
+      const data = await response.json();
+      citrineStatus = data;
+    } else {
+      citrineStatus = { available: false };
+    }
+  } catch (error) {
+    citrineStatus = { available: false };
+  }
+}
+
+async function fetchCitrineStationStatus(stationId) {
+  if (!citrineStatus.available) return;
+  try {
+    const response = await fetch(`/api/stations/${stationId}/citrine-status`);
+    if (response.ok) {
+      const data = await response.json();
+      citrineStationStatus[stationId] = data;
+    }
+  } catch (error) {
+    console.error('Failed to fetch Citrine status:', error);
+  }
+}
+
+async function syncWithCitrineOS(stationId) {
+  const syncBtn = document.getElementById('citrineSyncBtn');
+  if (syncBtn) {
+    syncBtn.disabled = true;
+    syncBtn.textContent = '🔄 Syncing...';
+  }
+  
+  try {
+    const response = await fetch(`/api/citrine/stations/${stationId}/sync`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (response.ok) {
+      showToast('Station synced with CitrineOS', 'success', '✅');
+      await fetchCitrineStationStatus(stationId);
+      updatePanel();
+    } else {
+      showToast('Sync failed', 'error', '❌');
+    }
+  } catch (error) {
+    showToast('Sync error: ' + error.message, 'error', '❌');
+  } finally {
+    if (syncBtn) {
+      syncBtn.disabled = false;
+      syncBtn.textContent = '🔄 Sync with CitrineOS';
+    }
+  }
 }
 
 // Register service worker for PWA
