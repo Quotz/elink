@@ -173,10 +173,21 @@ class CitrineOSClient {
   // Status
 
   async getStationStatus(stationId) {
-    const response = await this.client.get(
-      `/api/v1/charging-stations/${stationId}/status`
-    );
-    return response.data;
+    // Query CitrineOS for connector status via variable attributes
+    try {
+      const response = await this.client.get(`/data/monitoring/variableAttribute`, {
+        params: {
+          stationId: stationId,
+          tenantId: 1,
+          component_name: 'Connector',
+          variable_name: 'AvailabilityState'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      // If no data found, return empty status
+      return { connectors: [{ status: 'Unknown' }] };
+    }
   }
 
   // Get all connected charging stations from CitrineOS
