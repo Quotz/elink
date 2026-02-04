@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#7CB342">
+  <title>Sign Up - eLink</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #7CB342 0%, #689F38 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .auth-container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px 30px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .auth-logo {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .auth-logo img {
+      height: 60px;
+    }
+    .auth-logo h1 {
+      color: #333;
+      font-size: 24px;
+      margin-top: 10px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      color: #555;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 15px;
+      transition: border-color 0.3s;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: #7CB342;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-top: 10px;
+    }
+    .btn-primary {
+      background: #7CB342;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #689F38;
+    }
+    .btn-primary:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .auth-footer {
+      text-align: center;
+      margin-top: 20px;
+      color: #666;
+      font-size: 14px;
+    }
+    .auth-footer a {
+      color: #7CB342;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .error-message {
+      background: #ffebee;
+      color: #c62828;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      display: none;
+    }
+    .error-message.show {
+      display: block;
+    }
+    .success-message {
+      background: #e8f5e9;
+      color: #2e7d32;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      display: none;
+    }
+    .success-message.show {
+      display: block;
+    }
+    .password-hint {
+      font-size: 12px;
+      color: #888;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-logo">
+      <img src="/E-Link-1024x500.png" alt="eLink">
+      <h1>Create Account</h1>
+    </div>
+
+    <div class="error-message" id="errorMessage"></div>
+    <div class="success-message" id="successMessage">
+      <h3>✅ Account Created!</h3>
+      <p>Please check your email to verify your account.</p>
+      <a href="/login.html" style="color: #2e7d32; font-weight: 500;">Go to Login</a>
+    </div>
+
+    <form id="registerForm">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="firstName">First Name</label>
+          <input type="text" id="firstName" placeholder="John" required>
+        </div>
+        <div class="form-group">
+          <label for="lastName">Last Name</label>
+          <input type="text" id="lastName" placeholder="Doe" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="you@example.com" required>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="Create a password" required>
+        <p class="password-hint">Min 8 chars, 1 uppercase, 1 number</p>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="registerBtn">Create Account</button>
+    </form>
+
+    <div class="auth-footer" id="authFooter">
+      Already have an account? <a href="/login.html">Sign in</a>
+    </div>
+  </div>
+
+  <script>
+    // Check if already logged in
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      window.location.href = '/';
+    }
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const firstName = document.getElementById('firstName').value;
+      const lastName = document.getElementById('lastName').value;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const btn = document.getElementById('registerBtn');
+      const errorDiv = document.getElementById('errorMessage');
+      
+      btn.disabled = true;
+      btn.textContent = 'Creating account...';
+      errorDiv.classList.remove('show');
+      
+      try {
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            email, 
+            password, 
+            firstName, 
+            lastName,
+            name: `${firstName} ${lastName}`
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          document.getElementById('registerForm').style.display = 'none';
+          document.getElementById('authFooter').style.display = 'none';
+          document.getElementById('successMessage').classList.add('show');
+        } else {
+          errorDiv.textContent = data.error || 'Registration failed';
+          errorDiv.classList.add('show');
+        }
+      } catch (error) {
+        errorDiv.textContent = 'Network error. Please try again.';
+        errorDiv.classList.add('show');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+      }
+    });
+  </script>
+</body>
+</html>

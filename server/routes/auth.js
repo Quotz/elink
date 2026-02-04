@@ -48,6 +48,10 @@ router.post('/register', async (req, res) => {
       role
     });
 
+    // DEMO MODE: Auto-verify email
+    await db.verifyUser(user.verificationToken);
+    user.email_verified = 1;
+
     // Generate tokens
     const { accessToken, refreshToken } = generateTokens(user.id);
     
@@ -60,18 +64,17 @@ router.post('/register', async (req, res) => {
       userAgent: req.headers['user-agent']
     });
 
-    // TODO: Send verification email
-    console.log(`[Auth] User registered: ${user.email}, verification token: ${user.verificationToken}`);
+    console.log(`[Auth] User registered (auto-verified): ${user.email}`);
 
     res.status(201).json({
-      message: 'Registration successful. Please verify your email.',
+      message: 'Registration successful.',
       user: {
         id: user.id,
         email: user.email,
         role: user.role,
         firstName: user.firstName,
         lastName: user.lastName,
-        emailVerified: false
+        emailVerified: true
       },
       accessToken,
       refreshToken

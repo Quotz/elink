@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#7CB342">
+  <title>My Profile - eLink</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      min-height: 100vh;
+    }
+    .header {
+      background: linear-gradient(135deg, #7CB342 0%, #689F38 100%);
+      color: white;
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header h1 {
+      font-size: 20px;
+    }
+    .header-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .btn-small {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      background: rgba(255,255,255,0.2);
+      color: white;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .card-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #333;
+    }
+    .wallet-balance {
+      text-align: center;
+      padding: 30px 20px;
+    }
+    .balance-amount {
+      font-size: 48px;
+      font-weight: 700;
+      color: #7CB342;
+    }
+    .balance-label {
+      color: #888;
+      font-size: 14px;
+      margin-top: 8px;
+    }
+    .btn {
+      padding: 14px 24px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn-primary {
+      background: #7CB342;
+      color: white;
+      width: 100%;
+    }
+    .btn-primary:hover {
+      background: #689F38;
+    }
+    .btn-danger {
+      background: #f44336;
+      color: white;
+    }
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .user-avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #7CB342, #689F38);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 24px;
+      font-weight: 600;
+    }
+    .user-details h3 {
+      font-size: 18px;
+      color: #333;
+    }
+    .user-details p {
+      font-size: 14px;
+      color: #888;
+      margin-top: 4px;
+    }
+    .reservation-item {
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .reservation-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .reservation-station {
+      font-weight: 600;
+      color: #333;
+    }
+    .reservation-status {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .status-active {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+    .status-completed {
+      background: #e3f2fd;
+      color: #1565c0;
+    }
+    .status-cancelled {
+      background: #ffebee;
+      color: #c62828;
+    }
+    .reservation-time {
+      font-size: 14px;
+      color: #666;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #888;
+    }
+    .transaction-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .transaction-item:last-child {
+      border-bottom: none;
+    }
+    .transaction-type {
+      font-weight: 500;
+      color: #333;
+    }
+    .transaction-date {
+      font-size: 12px;
+      color: #888;
+      margin-top: 4px;
+    }
+    .transaction-amount {
+      font-weight: 600;
+      font-size: 16px;
+    }
+    .amount-positive {
+      color: #2e7d32;
+    }
+    .amount-negative {
+      color: #333;
+    }
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 1000;
+    }
+    .modal.hidden {
+      display: none;
+    }
+    .modal-content {
+      background: white;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 400px;
+      overflow: hidden;
+    }
+    .modal-header {
+      padding: 20px;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-header h3 {
+      font-size: 18px;
+    }
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #888;
+    }
+    .modal-body {
+      padding: 20px;
+    }
+    .amount-options {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .amount-btn {
+      padding: 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      background: white;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .amount-btn:hover, .amount-btn.selected {
+      border-color: #7CB342;
+      background: #f1f8e9;
+      color: #7CB342;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>My Profile</h1>
+    <div class="header-actions">
+      <button class="btn-small" onclick="window.location.href='/'">Map</button>
+      <button class="btn-small" onclick="logout()">Logout</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- User Info -->
+    <div class="card">
+      <div class="user-info">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div class="user-details">
+          <h3 id="userName">User</h3>
+          <p id="userEmail">email@example.com</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Wallet -->
+    <div class="card">
+      <h2 class="card-title">Wallet</h2>
+      <div class="wallet-balance">
+        <div class="balance-amount" id="balanceAmount">€0.00</div>
+        <div class="balance-label">Available Balance</div>
+      </div>
+      <button class="btn btn-primary" onclick="showTopUpModal()">+ Add Funds</button>
+    </div>
+
+    <!-- Reservations -->
+    <div class="card">
+      <h2 class="card-title">My Reservations</h2>
+      <div id="reservationsList">
+        <div class="empty-state">No reservations yet</div>
+      </div>
+    </div>
+
+    <!-- Recent Transactions -->
+    <div class="card">
+      <h2 class="card-title">Recent Transactions</h2>
+      <div id="transactionsList">
+        <div class="empty-state">No transactions yet</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Up Modal -->
+  <div class="modal hidden" id="topUpModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Add Funds</h3>
+        <button class="close-btn" onclick="hideTopUpModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="amount-options">
+          <button class="amount-btn" onclick="selectAmount(10)">€10</button>
+          <button class="amount-btn" onclick="selectAmount(20)">€20</button>
+          <button class="amount-btn" onclick="selectAmount(50)">€50</button>
+          <button class="amount-btn" onclick="selectAmount(100)">€100</button>
+          <button class="amount-btn" onclick="selectAmount(200)">€200</button>
+          <button class="amount-btn" onclick="selectAmount(500)">€500</button>
+        </div>
+        <button class="btn btn-primary" id="topUpBtn" onclick="processTopUp()" disabled>
+          Select Amount
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Payment Modal -->
+  <div class="modal hidden" id="paymentModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Payment</h3>
+        <button class="close-btn" onclick="hidePaymentModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 20px; color: #666;">Top up €<span id="paymentAmount">0</span></p>
+        <div style="background: #f5f5f5; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 20px;">
+          <p style="color: #888; font-size: 14px;">🔒 Secure Payment (Demo)</p>
+          <p style="margin-top: 10px; font-family: monospace;">**** **** **** 4242</p>
+        </div>
+        <button class="btn btn-primary" id="payNowBtn" onclick="confirmTopUp()">
+          Pay Now
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = null;
+    let selectedAmount = 0;
+    let authToken = localStorage.getItem('accessToken');
+
+    // Check auth
+    if (!authToken) {
+      window.location.href = '/login.html';
+    }
+
+    function getAuthHeaders() {
+      return {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json'
+      };
+    }
+
+    async function loadUserData() {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        currentUser = JSON.parse(userStr);
+        document.getElementById('userName').textContent = 
+          `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'User';
+        document.getElementById('userEmail').textContent = currentUser.email;
+        document.getElementById('userAvatar').textContent = 
+          (currentUser.firstName?.[0] || currentUser.email[0]).toUpperCase();
+      }
+    }
+
+    async function loadBalance() {
+      try {
+        const response = await fetch('/api/wallet/balance', {
+          headers: getAuthHeaders()
+        });
+        const data = await response.json();
+        document.getElementById('balanceAmount').textContent = `€${data.balance.toFixed(2)}`;
+      } catch (error) {
+        console.error('Failed to load balance:', error);
+      }
+    }
+
+    async function loadReservations() {
+      try {
+        const response = await fetch('/api/reservations/my', {
+          headers: getAuthHeaders()
+        });
+        const data = await response.json();
+        
+        const container = document.getElementById('reservationsList');
+        if (data.length === 0) {
+          container.innerHTML = '<div class="empty-state">No reservations yet</div>';
+          return;
+        }
+
+        container.innerHTML = data.map(r => {
+          const start = new Date(r.startTime);
+          const end = new Date(r.endTime);
+          const dateStr = start.toLocaleDateString();
+          const timeStr = `${start.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${end.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+          
+          return `
+            <div class="reservation-item">
+              <div class="reservation-header">
+                <span class="reservation-station">Charger ${r.chargerId}</span>
+                <span class="reservation-status status-${r.status}">${r.status}</span>
+              </div>
+              <div class="reservation-time">${dateStr} · ${timeStr}</div>
+              ${r.status === 'active' ? `<button class="btn btn-danger" style="margin-top: 10px; padding: 8px; font-size: 14px;" onclick="cancelReservation('${r.id}')">Cancel</button>` : ''}
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        console.error('Failed to load reservations:', error);
+      }
+    }
+
+    async function loadTransactions() {
+      try {
+        const response = await fetch('/api/wallet/transactions', {
+          headers: getAuthHeaders()
+        });
+        const data = await response.json();
+        
+        const container = document.getElementById('transactionsList');
+        if (!data.transactions || data.transactions.length === 0) {
+          container.innerHTML = '<div class="empty-state">No transactions yet</div>';
+          return;
+        }
+
+        container.innerHTML = data.transactions.slice(0, 5).map(t => {
+          const isTopUp = t.type === 'topup';
+          const amountClass = isTopUp ? 'amount-positive' : 'amount-negative';
+          const sign = isTopUp ? '+' : '';
+          const date = new Date(t.timestamp).toLocaleDateString();
+          
+          return `
+            <div class="transaction-item">
+              <div>
+                <div class="transaction-type">${isTopUp ? 'Top Up' : 'Charging Payment'}</div>
+                <div class="transaction-date">${date}</div>
+              </div>
+              <div class="transaction-amount ${amountClass}">${sign}€${Math.abs(t.amount).toFixed(2)}</div>
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        console.error('Failed to load transactions:', error);
+      }
+    }
+
+    function showTopUpModal() {
+      selectedAmount = 0;
+      document.querySelectorAll('.amount-btn').forEach(btn => btn.classList.remove('selected'));
+      document.getElementById('topUpBtn').textContent = 'Select Amount';
+      document.getElementById('topUpBtn').disabled = true;
+      document.getElementById('topUpModal').classList.remove('hidden');
+    }
+
+    function hideTopUpModal() {
+      document.getElementById('topUpModal').classList.add('hidden');
+    }
+
+    function selectAmount(amount) {
+      selectedAmount = amount;
+      document.querySelectorAll('.amount-btn').forEach(btn => btn.classList.remove('selected'));
+      event.target.classList.add('selected');
+      document.getElementById('topUpBtn').textContent = `Add €${amount}`;
+      document.getElementById('topUpBtn').disabled = false;
+    }
+
+    function processTopUp() {
+      hideTopUpModal();
+      document.getElementById('paymentAmount').textContent = selectedAmount;
+      document.getElementById('paymentModal').classList.remove('hidden');
+    }
+
+    function hidePaymentModal() {
+      document.getElementById('paymentModal').classList.add('hidden');
+    }
+
+    async function confirmTopUp() {
+      const btn = document.getElementById('payNowBtn');
+      btn.disabled = true;
+      btn.textContent = 'Processing...';
+
+      try {
+        const response = await fetch('/api/wallet/topup', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ amount: selectedAmount, paymentMethod: 'card' })
+        });
+
+        if (response.ok) {
+          hidePaymentModal();
+          loadBalance();
+          loadTransactions();
+          alert('Payment successful!');
+        } else {
+          alert('Payment failed. Please try again.');
+        }
+      } catch (error) {
+        alert('Network error. Please try again.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Pay Now';
+      }
+    }
+
+    async function cancelReservation(id) {
+      if (!confirm('Cancel this reservation?')) return;
+
+      try {
+        const response = await fetch(`/api/reservations/${id}/cancel`, {
+          method: 'POST',
+          headers: getAuthHeaders()
+        });
+
+        if (response.ok) {
+          loadReservations();
+        } else {
+          alert('Failed to cancel reservation');
+        }
+      } catch (error) {
+        alert('Network error');
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      window.location.href = '/login.html';
+    }
+
+    // Load all data
+    loadUserData();
+    loadBalance();
+    loadReservations();
+    loadTransactions();
+
+    // Refresh every 30 seconds
+    setInterval(() => {
+      loadBalance();
+      loadReservations();
+    }, 30000);
+  </script>
+</body>
+</html>

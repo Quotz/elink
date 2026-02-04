@@ -21,6 +21,10 @@ let sessionData = {
   maxPower: 0
 };
 
+// Auth state
+let currentUser = null;
+let authToken = localStorage.getItem('accessToken');
+
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
   initMap();
@@ -28,10 +32,215 @@ document.addEventListener('DOMContentLoaded', () => {
   setupCardFormatting();
   checkCitrineStatus(); // Check CitrineOS connection
   updateHeaderStats(); // Initial stats
+  initAuth(); // Setup auth UI
+  initReservationUI(); // Setup reservation button
   
   // Check CitrineOS status periodically
   setInterval(checkCitrineStatus, 30000);
 });
+
+// Auth initialization
+function initAuth() {
+  const userStr = localStorage.getItem('user');
+  if (userStr) {
+    currentUser = JSON.parse(userStr);
+  }
+  updateAuthUI();
+}
+
+function updateAuthUI() {
+  const headerRight = document.querySelector('.header-right');
+  if (!headerRight) return;
+  
+  // Keep the stats badge and connection status
+  const statsBadge = document.getElementById('statsBadge');
+  const connectionStatus = document.getElementById('connectionStatus');
+  
+  // Check if user menu already exists
+  let userMenu = document.getElementById('userMenu');
+  
+  if (currentUser) {
+    if (!userMenu) {
+      userMenu = document.createElement('div');
+      userMenu.id = 'userMenu';
+      userMenu.className = 'user-menu';
+      userMenu.innerHTML = `
+        <button class="user-menu-btn" onclick="toggleUserMenu()">
+          <span class="user-avatar">${(currentUser.firstName?.[0] || currentUser.email[0]).toUpperCase()}</span>
+          <span class="user-name">${currentUser.firstName || 'User'}</span>
+          <span class="dropdown-icon">▼</span>
+        </button>
+        <div class="user-dropdown hidden" id="userDropdown">
+          <a href="/profile.html" class="dropdown-item">👤 Profile & Wallet</a>
+          <div class="dropdown-divider"></div>
+          <button class="dropdown-item" onclick="logout()">🚪 Logout</button>
+        </div>
+      `;
+      headerRight.appendChild(userMenu);
+    }
+  } else {
+    if (!userMenu) {
+      userMenu = document.createElement('div');
+      userMenu.id = 'userMenu';
+      userMenu.className = 'user-menu';
+      userMenu.innerHTML = `
+        <button class="btn btn-login" onclick="window.location.href='/login.html'">
+          Sign In
+        </button>
+      `;
+      headerRight.appendChild(userMenu);
+    }
+  }
+}
+
+function toggleUserMenu() {
+  const dropdown = document.getElementById('userDropdown');
+  dropdown.classList.toggle('hidden');
+}
+
+function logout() {
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('user');
+  window.location.reload();
+}
+
+function getAuthHeaders() {
+  return {
+    'Authorization': `Bearer ${authToken}`,
+    'Content-Type': 'application/json'
+  };
+}
+
+// Reservation UI
+function initReservationUI() {
+  // Add reservation button to station panel if user is logged in
+  const actionButtons = document.querySelector('.action-buttons');
+  if (actionButtons && !document.getElementById('reserveBtn')) {
+    const reserveBtn = document.createElement('button');
+    reserveBtn.id = 'reserveBtn';
+    reserveBtn.className = 'btn btn-secondary';
+    reserveBtn.style.cssText = 'margin-top: 10px; width: 100%;';
+    reserveBtn.innerHTML = '📅 Reserve Slot';
+    reserveBtn.onclick = showReservationModal;
+    actionButtons.appendChild(reserveBtn);
+  }
+}
+
+function showReservationModal() {
+  if (!currentUser) {
+    window.location.href = '/login.html';
+    return;
+  }
+  
+  if (!selectedStation) return;
+  
+  // Check if station is available
+  if (selectedStation.currentTransaction) {
+    showToast('Station is currently in use', 'error');
+    return;
+  }
+  
+  // Create and show reservation modal
+  let modal = document.getElementById('reservationModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'reservationModal';
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>📅 Reserve Charging Slot</h3>
+          <button class="close-btn" onclick="closeReservationModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p style="margin-bottom: 15px; color: #666;">
+            Station: <strong id="reservationStationName">--</strong>
+          </p>
+          <div id="reservationSlots" class="reservation-slots">
+            <p>Loading available slots...</p>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+  
+  document.getElementById('reservationStationName').textContent = selectedStation.name;
+  modal.classList.remove('hidden');
+  loadAvailableSlots();
+}
+
+function closeReservationModal() {
+  const modal = document.getElementById('reservationModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+async function loadAvailableSlots() {
+  if (!selectedStation) return;
+  
+  const container = document.getElementById('reservationSlots');
+  container.innerHTML = '<p>Loading...</p>';
+  
+  try {
+    const response = await fetch(`/api/reservations/slots/${selectedStation.id}`);
+    const data = await response.json();
+    
+    if (data.slots.length === 0) {
+      container.innerHTML = '<p>No slots available</p>';
+      return;
+    }
+    
+    // Filter to show only next 12 slots (6 hours)
+    const upcomingSlots = data.slots.filter(s => s.available).slice(0, 12);
+    
+    if (upcomingSlots.length === 0) {
+      container.innerHTML = '<p>No available slots in next 6 hours</p>';
+      return;
+    }
+    
+    container.innerHTML = upcomingSlots.map(slot => {
+      const date = new Date(slot.time);
+      const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const dateStr = date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+      return `
+        <button class="slot-btn" onclick="makeReservation('${slot.time}')">
+          <span class="slot-time">${timeStr}</span>
+          <span class="slot-date">${dateStr}</span>
+          <span class="slot-duration">30 min</span>
+        </button>
+      `;
+    }).join('');
+  } catch (error) {
+    container.innerHTML = '<p>Error loading slots</p>';
+  }
+}
+
+async function makeReservation(startTime) {
+  if (!selectedStation || !currentUser) return;
+  
+  try {
+    const response = await fetch('/api/reservations', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        chargerId: selectedStation.id,
+        startTime: startTime
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      showToast('Reservation confirmed!', 'success', '✅');
+      closeReservationModal();
+    } else {
+      showToast(data.error || 'Failed to reserve', 'error');
+    }
+  } catch (error) {
+    showToast('Network error', 'error');
+  }
+}
 
 // Initialize Leaflet map
 function initMap() {
