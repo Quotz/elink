@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initAuth();
   initReservationUI();
   initCitrineIndicator();
+  initSearch();
   
   // Check CitrineOS status periodically
   setInterval(checkCitrineStatus, 30000);
@@ -682,6 +683,20 @@ function closePanel() {
   }
 }
 
+// Navigate to station using native maps
+function navigateToStation() {
+  if (!selectedStation) return;
+  const { lat, lng, name } = selectedStation;
+  const label = encodeURIComponent(name || 'Charging Station');
+  // Try native maps first, fall back to Google Maps
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  if (isIOS) {
+    window.open(`maps://maps.apple.com/?daddr=${lat},${lng}&q=${label}`, '_blank');
+  } else {
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+  }
+}
+
 // Payment flow
 function showPayment() {
   const modal = document.getElementById('paymentModal');
@@ -708,16 +723,34 @@ async function processPayment() {
   const cardNumber = document.getElementById('cardNumber')?.value;
   const expiry = document.getElementById('cardExpiry')?.value;
   const cvv = document.getElementById('cardCvv')?.value;
-  
-  if (!cardNumber || cardNumber.replace(/\s/g, '').length < 16) {
-    showToast('Please enter a valid card number', 'error', '❌');
+  const cardError = document.getElementById('cardError');
+
+  // Validate card number
+  const digits = (cardNumber || '').replace(/\s/g, '');
+  if (digits.length < 16) {
+    if (cardError) { cardError.textContent = 'Please enter a valid 16-digit card number'; cardError.style.display = 'block'; }
     return;
   }
-  
+
+  // Validate expiry
+  if (!expiry || !/^\d{2}\/\d{2}$/.test(expiry)) {
+    if (cardError) { cardError.textContent = 'Please enter a valid expiry date (MM/YY)'; cardError.style.display = 'block'; }
+    return;
+  }
+
+  // Validate CVV
+  if (!cvv || cvv.length < 3) {
+    if (cardError) { cardError.textContent = 'Please enter a valid security code'; cardError.style.display = 'block'; }
+    return;
+  }
+
+  if (cardError) cardError.style.display = 'none';
+
   const payBtn = document.getElementById('payBtn');
+  const payBtnText = document.getElementById('payBtnText');
   if (payBtn) {
     payBtn.disabled = true;
-    payBtn.textContent = 'Processing...';
+    if (payBtnText) payBtnText.textContent = 'Processing...';
   }
   
   try {
@@ -742,7 +775,7 @@ async function processPayment() {
   } finally {
     if (payBtn) {
       payBtn.disabled = false;
-      payBtn.textContent = 'Authorize & Start Charging';
+      if (payBtnText) payBtnText.textContent = 'Authorize & Start Charging';
     }
   }
 }
@@ -862,6 +895,15 @@ function closeSummary() {
   if (summaryModal) summaryModal.classList.add('hidden');
 }
 
+// Card brand detection
+function detectCardBrand(number) {
+  const n = number.replace(/\s/g, '');
+  if (/^4/.test(n)) return { brand: 'visa', icon: '\uD83C\uDDE8\uD83C\uDDE8' }; // placeholder
+  if (/^5[1-5]/.test(n)) return { brand: 'mastercard', icon: '' };
+  if (/^(6304|6759|6761|6762|6763)/.test(n)) return { brand: 'maestro', icon: '' };
+  return { brand: '', icon: '' };
+}
+
 // Card input formatting
 function setupCardFormatting() {
   const cardInput = document.getElementById('cardNumber');
@@ -874,9 +916,26 @@ function setupCardFormatting() {
         formatted += value[i];
       }
       e.target.value = formatted;
+
+      // Update card brand icon
+      const brandEl = document.getElementById('cardBrandIcon');
+      if (brandEl) {
+        const { brand } = detectCardBrand(value);
+        if (brand === 'visa') brandEl.textContent = 'VISA';
+        else if (brand === 'mastercard') brandEl.textContent = 'MC';
+        else if (brand === 'maestro') brandEl.textContent = 'MST';
+        else brandEl.textContent = '';
+        brandEl.style.fontWeight = '700';
+        brandEl.style.fontSize = brand ? '14px' : '24px';
+        brandEl.style.color = brand === 'visa' ? '#1a1f71' : brand === 'mastercard' ? '#eb001b' : '#0099df';
+      }
+
+      // Clear errors on input
+      const errEl = document.getElementById('cardError');
+      if (errEl) errEl.style.display = 'none';
     });
   }
-  
+
   const expiryInput = document.getElementById('cardExpiry');
   if (expiryInput) {
     expiryInput.addEventListener('input', (e) => {
@@ -1046,6 +1105,58 @@ async function syncWithCitrineOS(stationId) {
       syncBtn.textContent = '🔄 Sync with CitrineOS';
     }
   }
+}
+
+// Station search
+function initSearch() {
+  const input = document.getElementById('searchInput');
+  const results = document.getElementById('searchResults');
+  if (!input || !results) return;
+
+  input.addEventListener('input', () => {
+    const query = input.value.trim().toLowerCase();
+    if (query.length < 1) {
+      results.classList.add('hidden');
+      return;
+    }
+
+    const matches = stations.filter(s =>
+      (s.name && s.name.toLowerCase().includes(query)) ||
+      (s.address && s.address.toLowerCase().includes(query)) ||
+      (s.id && s.id.toLowerCase().includes(query))
+    );
+
+    if (matches.length === 0) {
+      results.innerHTML = '<div style="padding:14px;text-align:center;color:#999;font-size:0.85rem">No stations found</div>';
+    } else {
+      results.innerHTML = matches.map(s => {
+        const isOnline = s.connected || (s.lastHeartbeat && (Date.now() - s.lastHeartbeat) < 120000);
+        const statusText = s.currentTransaction ? 'Charging' : isOnline ? 'Available' : 'Offline';
+        const statusColor = s.currentTransaction ? '#ef6c00;background:#fff3e0' : isOnline ? '#2e7d32;background:#e8f5e9' : '#666;background:#f5f5f5';
+        return `<div class="search-result-item" onclick="searchSelectStation('${s.id}')">
+          <div>
+            <div class="search-result-name">${s.name}</div>
+            <div class="search-result-address">${s.address || ''} &bull; ${s.power} kW</div>
+          </div>
+          <span class="search-result-status" style="color:${statusColor}">${statusText}</span>
+        </div>`;
+      }).join('');
+    }
+    results.classList.remove('hidden');
+  });
+
+  // Close results when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.search-bar')) {
+      results.classList.add('hidden');
+    }
+  });
+}
+
+function searchSelectStation(id) {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchResults').classList.add('hidden');
+  selectStation(id);
 }
 
 // Register service worker for PWA

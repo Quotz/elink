@@ -201,19 +201,20 @@ app.post('/api/stations', (req, res) => {
 
 app.put('/api/stations/:id', (req, res) => {
   const { id } = req.params;
-  const { name, power, lat, lng, address } = req.body;
-  
+  const { name, power, lat, lng, address, pricePerKwh } = req.body;
+
   const station = store.getStation(id);
   if (!station) {
     return res.status(404).json({ error: 'Station not found' });
   }
-  
+
   const updates = {};
   if (name !== undefined) updates.name = name;
   if (power !== undefined) updates.power = power;
   if (lat !== undefined) updates.lat = lat;
   if (lng !== undefined) updates.lng = lng;
   if (address !== undefined) updates.address = address;
+  if (pricePerKwh !== undefined) updates.pricePerKwh = pricePerKwh;
   
   const updatedStation = store.updateStation(id, updates);
   broadcastUpdate();

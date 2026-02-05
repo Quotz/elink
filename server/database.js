@@ -169,6 +169,27 @@ class Database {
       );
 
       CREATE INDEX IF NOT EXISTS idx_push_tokens_user ON push_tokens(user_id);
+
+      -- Wallet balances
+      CREATE TABLE IF NOT EXISTS wallet_balances (
+        user_id TEXT PRIMARY KEY,
+        balance REAL DEFAULT 0,
+        updated_at INTEGER DEFAULT (unixepoch()),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      );
+
+      -- Wallet transactions
+      CREATE TABLE IF NOT EXISTS wallet_transactions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        type TEXT NOT NULL CHECK(type IN ('topup', 'payment', 'refund')),
+        amount REAL NOT NULL,
+        description TEXT,
+        created_at INTEGER DEFAULT (unixepoch()),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_wallet_transactions_user ON wallet_transactions(user_id);
     `);
   }
 
@@ -676,6 +697,131 @@ class Database {
         function(err) {
           if (err) reject(err);
           else resolve(this.changes > 0);
+        }
+      );
+    });
+  }
+
+  // Wallet methods
+  async getWalletBalance(userId) {
+    return new Promise((resolve, reject) => {
+      this.db.get(
+        'SELECT balance FROM wallet_balances WHERE user_id = ?',
+        [userId],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row ? row.balance : 0);
+        }
+      );
+    });
+  }
+
+  async addWalletFunds(userId, amount) {
+    const id = uuidv4();
+    return new Promise((resolve, reject) => {
+      this.db.run(
+        `INSERT INTO wallet_balances (user_id, balance, updated_at)
+         VALUES (?, ?, unixepoch())
+         ON CONFLICT(user_id) DO UPDATE SET
+           balance = balance + ?, updated_at = unixepoch()`,
+        [userId, amount, amount],
+        (err) => {
+          if (err) return reject(err);
+          this.db.run(
+            `INSERT INTO wallet_transactions (id, user_id, type, amount, description)
+             VALUES (?, ?, 'topup', ?, 'Wallet top-up')`,
+            [id, userId, amount],
+            (err2) => {
+              if (err2) return reject(err2);
+              this.db.get(
+                'SELECT balance FROM wallet_balances WHERE user_id = ?',
+                [userId],
+                (err3, row) => {
+                  if (err3) reject(err3);
+                  else resolve(row.balance);
+                }
+              );
+            }
+          );
+        }
+      );
+    });
+  }
+
+  async deductWalletFunds(userId, amount, description = 'Charging payment') {
+    return new Promise((resolve, reject) => {
+      this.db.get(
+        'SELECT balance FROM wallet_balances WHERE user_id = ?',
+        [userId],
+        (err, row) => {
+          if (err) return reject(err);
+          const balance = row ? row.balance : 0;
+          if (balance < amount) {
+            return resolve({ success: false, error: 'Insufficient balance' });
+          }
+          const id = uuidv4();
+          this.db.run(
+            `UPDATE wallet_balances SET balance = balance - ?, updated_at = unixepoch()
+             WHERE user_id = ?`,
+            [amount, userId],
+            (err2) => {
+              if (err2) return reject(err2);
+              this.db.run(
+                `INSERT INTO wallet_transactions (id, user_id, type, amount, description)
+                 VALUES (?, ?, 'payment', ?, ?)`,
+                [id, userId, -amount, description],
+                (err3) => {
+                  if (err3) return reject(err3);
+                  resolve({ success: true, balance: balance - amount });
+                }
+              );
+            }
+          );
+        }
+      );
+    });
+  }
+
+  async getWalletTransactions(userId, limit = 20) {
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        `SELECT * FROM wallet_transactions WHERE user_id = ?
+         ORDER BY created_at DESC LIMIT ?`,
+        [userId, limit],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
+    });
+  }
+
+  async getAllWalletTransactions(limit = 100) {
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        `SELECT wt.*, u.email, u.first_name, u.last_name
+         FROM wallet_transactions wt
+         JOIN users u ON wt.user_id = u.id
+         ORDER BY wt.created_at DESC LIMIT ?`,
+        [limit],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
+    });
+  }
+
+  // Admin: get all users
+  async getAllUsers(limit = 100) {
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        `SELECT id, email, phone, role, first_name, last_name, email_verified, created_at
+         FROM users ORDER BY created_at DESC LIMIT ?`,
+        [limit],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
         }
       );
     });

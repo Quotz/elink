@@ -5,9 +5,6 @@
 
 const db = require('./database');
 
-// Mock wallet for MVP
-const mockWallets = new Map();
-
 class NotificationService {
   constructor() {
     this.emailEnabled = false;
@@ -184,61 +181,41 @@ class NotificationService {
   }
 }
 
-// Mock Wallet Service for MVP
+// Persistent Wallet Service backed by SQLite
 class WalletService {
-  constructor() {
-    // In-memory mock wallets
-    this.wallets = new Map();
-    this.transactions = [];
+  async getBalance(userId) {
+    return db.getWalletBalance(userId);
   }
 
-  getBalance(userId) {
-    return this.wallets.get(userId) || 0;
+  async addFunds(userId, amount) {
+    return db.addWalletFunds(userId, amount);
   }
 
-  addFunds(userId, amount) {
-    const current = this.getBalance(userId);
-    this.wallets.set(userId, current + amount);
-    
-    this.transactions.push({
-      id: Date.now().toString(),
-      userId,
-      type: 'topup',
-      amount,
-      timestamp: new Date().toISOString()
-    });
-
-    return this.getBalance(userId);
+  async deductFunds(userId, amount) {
+    return db.deductWalletFunds(userId, amount);
   }
 
-  deductFunds(userId, amount) {
-    const current = this.getBalance(userId);
-    if (current < amount) {
-      return { success: false, error: 'Insufficient balance' };
-    }
-
-    this.wallets.set(userId, current - amount);
-    
-    this.transactions.push({
-      id: Date.now().toString(),
-      userId,
-      type: 'payment',
-      amount: -amount,
-      timestamp: new Date().toISOString()
-    });
-
-    return { success: true, balance: this.getBalance(userId) };
+  async getTransactions(userId, limit = 20) {
+    const rows = await db.getWalletTransactions(userId, limit);
+    return rows.map(r => ({
+      id: r.id,
+      userId: r.user_id,
+      type: r.type,
+      amount: r.amount,
+      timestamp: new Date(r.created_at * 1000).toISOString()
+    }));
   }
 
-  getTransactions(userId, limit = 20) {
-    return this.transactions
-      .filter(t => t.userId === userId)
-      .slice(-limit)
-      .reverse();
-  }
-
-  getAllTransactions(limit = 100) {
-    return this.transactions.slice(-limit).reverse();
+  async getAllTransactions(limit = 100) {
+    const rows = await db.getAllWalletTransactions(limit);
+    return rows.map(r => ({
+      id: r.id,
+      userId: r.user_id,
+      type: r.type,
+      amount: r.amount,
+      email: r.email,
+      timestamp: new Date(r.created_at * 1000).toISOString()
+    }));
   }
 }
 

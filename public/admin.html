@@ -523,13 +523,31 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // Auth check - allow any logged in user for demo
+    // Auth check - require admin role
     const authToken = localStorage.getItem('accessToken');
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    
-    if (!authToken) {
+
+    if (!authToken || user.role !== 'admin') {
       window.location.href = '/login.html';
     }
+
+    // Verify token server-side
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/me', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (!res.ok) {
+          localStorage.clear();
+          window.location.href = '/login.html';
+        } else {
+          const data = await res.json();
+          if (data.user && data.user.role !== 'admin') {
+            window.location.href = '/';
+          }
+        }
+      } catch (e) { /* allow offline with cached token */ }
+    })();
 
     function getAuthHeaders() {
       return {
@@ -592,7 +610,7 @@
               <td>${s.currentTransaction ? `⚡ ${s.currentTransaction.idTag}` : '—'}</td>
               <td>
                 <button class="btn btn-small btn-success" onclick="editStation('${s.id}')">Edit</button>
-                ${s.currentTransaction ? `<button class="btn btn-small btn-danger" onclick="stopCharging('${s.id}')">Stop</button>` : ''}
+                ${s.currentTransaction ? `<button class="btn btn-small btn-danger" onclick="stopCharging('${s.id}')">Stop</button>` : `<button class="btn btn-small btn-danger" onclick="deleteStation('${s.id}')">Delete</button>`}
               </td>
             </tr>
           `;
@@ -602,10 +620,30 @@
       }
     }
 
-    // Load users (mock for now - need API)
+    // Load users
     async function loadUsers() {
-      const tbody = document.getElementById('usersTable');
-      tbody.innerHTML = '<tr><td colspan="5" class="empty-state">API endpoint needed</td></tr>';
+      try {
+        const response = await fetch('/api/users/all', { headers: getAuthHeaders() });
+        const data = await response.json();
+        document.getElementById('totalUsers').textContent = data.users.length;
+        const tbody = document.getElementById('usersTable');
+        if (data.users.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No users</td></tr>';
+          return;
+        }
+        tbody.innerHTML = data.users.map(u => {
+          const date = new Date(u.createdAt).toLocaleDateString();
+          return `<tr>
+            <td>${u.email}</td>
+            <td>${u.firstName || ''} ${u.lastName || ''}</td>
+            <td><span class="status-badge ${u.role === 'admin' ? 'status-charging' : 'status-online'}">${u.role}</span></td>
+            <td>${u.emailVerified ? '✓' : '✗'}</td>
+            <td>${date}</td>
+          </tr>`;
+        }).join('');
+      } catch (error) {
+        console.error('Failed to load users:', error);
+      }
     }
 
     // Load reservations
@@ -687,8 +725,10 @@
 
     // Station modal
     function openStationModal() {
+      editingStationId = null;
       document.getElementById('stationModalTitle').textContent = 'Add Station';
       document.getElementById('stationForm').reset();
+      document.getElementById('stationId').readOnly = false;
       document.getElementById('stationModal').classList.add('show');
     }
 
@@ -696,16 +736,90 @@
       document.getElementById('stationModal').classList.remove('show');
     }
 
+    let editingStationId = null;
+
     function editStation(id) {
-      // TODO: Load station data
-      openStationModal();
+      editingStationId = id;
+      document.getElementById('stationModalTitle').textContent = 'Edit Station';
+
+      // Fetch station data
+      fetch(`/api/stations/${id}`)
+        .then(r => r.json())
+        .then(s => {
+          document.getElementById('stationId').value = s.id;
+          document.getElementById('stationId').readOnly = true;
+          document.getElementById('stationName').value = s.name || '';
+          document.getElementById('stationPower').value = s.power || '';
+          document.getElementById('stationPrice').value = s.pricePerKwh || 0.35;
+          document.getElementById('stationLat').value = s.lat || '';
+          document.getElementById('stationLng').value = s.lng || '';
+          document.getElementById('stationAddress').value = s.address || '';
+          document.getElementById('stationModal').classList.add('show');
+        })
+        .catch(() => alert('Failed to load station'));
     }
 
     async function saveStation(e) {
       e.preventDefault();
-      // TODO: Implement save
-      closeStationModal();
-      loadStations();
+
+      const data = {
+        id: document.getElementById('stationId').value.trim(),
+        name: document.getElementById('stationName').value.trim(),
+        power: parseFloat(document.getElementById('stationPower').value),
+        pricePerKwh: parseFloat(document.getElementById('stationPrice').value),
+        lat: parseFloat(document.getElementById('stationLat').value),
+        lng: parseFloat(document.getElementById('stationLng').value),
+        address: document.getElementById('stationAddress').value.trim()
+      };
+
+      try {
+        let response;
+        if (editingStationId) {
+          // Update existing
+          response = await fetch(`/api/stations/${editingStationId}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data)
+          });
+        } else {
+          // Create new
+          response = await fetch('/api/stations', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data)
+          });
+        }
+
+        if (!response.ok) {
+          const err = await response.json();
+          alert(err.error || 'Failed to save station');
+          return;
+        }
+
+        closeStationModal();
+        loadStations();
+      } catch (error) {
+        alert('Network error saving station');
+      }
+    }
+
+    async function deleteStation(id) {
+      if (!confirm(`Delete station ${id}? This cannot be undone.`)) return;
+
+      try {
+        const response = await fetch(`/api/stations/${id}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders()
+        });
+        if (!response.ok) {
+          const err = await response.json();
+          alert(err.error || 'Failed to delete');
+          return;
+        }
+        loadStations();
+      } catch (error) {
+        alert('Failed to delete station');
+      }
     }
 
     async function stopCharging(stationId) {

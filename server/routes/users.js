@@ -141,4 +141,30 @@ router.get('/stats', authenticate, async (req, res) => {
   }
 });
 
+// Admin: list all users
+router.get('/all', authenticate, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const users = await db.getAllUsers();
+    res.json({
+      users: users.map(u => ({
+        id: u.id,
+        email: u.email,
+        phone: u.phone,
+        role: u.role,
+        firstName: u.first_name,
+        lastName: u.last_name,
+        emailVerified: !!u.email_verified,
+        createdAt: new Date(u.created_at * 1000).toISOString()
+      }))
+    });
+  } catch (error) {
+    console.error('[Users] Get all users error:', error);
+    res.status(500).json({ error: 'Failed to get users' });
+  }
+});
+
 module.exports = router;

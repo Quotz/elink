@@ -17,6 +17,7 @@
     <header class="header">
       <div class="header-left">
         <img src="/E-Link-1024x500.png" alt="elink" class="logo">
+        <img src="/inova-logo.png" alt="INOVA MK" class="logo partner-logo" onerror="this.style.display='none'">
         <h1>EV Charging</h1>
       </div>
       <div class="header-right">
@@ -27,6 +28,12 @@
         </div>
       </div>
     </header>
+
+    <!-- Search Bar -->
+    <div class="search-bar" id="searchBar">
+      <input type="text" id="searchInput" placeholder="Search stations..." autocomplete="off">
+      <div class="search-results hidden" id="searchResults"></div>
+    </div>
 
     <!-- Map View -->
     <div id="map"></div>
@@ -139,6 +146,9 @@
         <button class="btn btn-danger hidden" id="stopBtn" onclick="stopCharging()">
           ⏹ Stop Charging
         </button>
+        <button class="btn btn-secondary" id="navigateBtn" onclick="navigateToStation()" style="background:#2196F3;color:white;margin-top:8px">
+          Navigate
+        </button>
       </div>
     </div>
 
@@ -146,32 +156,47 @@
     <div class="modal hidden" id="paymentModal">
       <div class="modal-content">
         <div class="modal-header">
-          <h3>💳 Payment Method</h3>
+          <h3>Payment</h3>
           <button class="close-btn" onclick="closePayment()">&times;</button>
         </div>
         <div class="modal-body">
-          <p class="demo-notice">🔒 Demo Mode - Secure Payment Simulation</p>
-          
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding:10px 14px;background:#f0faf0;border-radius:8px;font-size:13px;color:#2e7d32">
+            <span style="font-size:16px">&#128274;</span> Secure payment powered by eLink
+          </div>
+
           <div class="form-group">
             <label>Card Number</label>
-            <input type="text" id="cardNumber" placeholder="4242 4242 4242 4242" 
-                   maxlength="19" inputmode="numeric">
+            <div style="position:relative">
+              <input type="text" id="cardNumber" placeholder="1234 5678 9012 3456"
+                     maxlength="19" inputmode="numeric" autocomplete="cc-number"
+                     style="padding-right:60px">
+              <span id="cardBrandIcon" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:24px;opacity:0.6"></span>
+            </div>
           </div>
-          
+
           <div class="form-row">
             <div class="form-group">
-              <label>Expiry</label>
-              <input type="text" id="cardExpiry" placeholder="MM/YY" maxlength="5">
+              <label>Expiry Date</label>
+              <input type="text" id="cardExpiry" placeholder="MM / YY" maxlength="5" autocomplete="cc-exp">
             </div>
             <div class="form-group">
-              <label>CVV</label>
-              <input type="text" id="cardCvv" placeholder="123" maxlength="4" inputmode="numeric">
+              <label>Security Code</label>
+              <input type="password" id="cardCvv" placeholder="CVV" maxlength="4" inputmode="numeric" autocomplete="cc-csc">
             </div>
           </div>
-          
-          <button class="btn btn-primary btn-full" id="payBtn" onclick="processPayment()">
-            Authorize & Start Charging
+
+          <div id="cardError" style="display:none;color:#c62828;font-size:13px;margin-bottom:12px;padding:8px 12px;background:#ffebee;border-radius:8px"></div>
+
+          <button class="btn btn-primary btn-full" id="payBtn" onclick="processPayment()" style="position:relative;overflow:hidden">
+            <span id="payBtnText">Authorize & Start Charging</span>
+            <span id="payBtnSpinner" style="display:none;position:absolute;inset:0;background:#689F38;display:none;align-items:center;justify-content:center">
+              Processing...
+            </span>
           </button>
+
+          <div style="text-align:center;margin-top:14px;font-size:11px;color:#aaa">
+            Visa, Mastercard, and Maestro accepted
+          </div>
         </div>
       </div>
     </div>

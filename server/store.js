@@ -135,9 +135,9 @@ module.exports = {
         : stations[id].currentTransaction
     };
     
-    // Save persistent fields (name, power, lat, lng, address) to file
+    // Save persistent fields to file
     // Don't save runtime data (connected, status, transactions, etc.)
-    if (updates.name || updates.power || updates.lat || updates.lng || updates.address) {
+    if (updates.name || updates.power || updates.lat || updates.lng || updates.address || updates.pricePerKwh !== undefined) {
       saveStations();
     }
     
