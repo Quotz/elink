@@ -4,224 +4,218 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#7CB342">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <title>Sign Up - eLink</title>
   <link rel="stylesheet" href="/style.css">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #7CB342 0%, #689F38 100%);
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
       min-height: 100vh;
+      min-height: 100dvh;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 20px;
+      overflow: auto;
     }
+    .back-link {
+      position: absolute;
+      top: max(16px, env(safe-area-inset-top, 16px));
+      left: 16px;
+      color: rgba(255,255,255,0.9);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      min-height: 44px;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      transition: background 0.2s;
+    }
+    .back-link:active { background: rgba(255,255,255,0.15); }
     .auth-container {
       background: white;
       border-radius: 20px;
-      padding: 40px 30px;
+      padding: 36px 28px;
       width: 100%;
       max-width: 400px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+      animation: auth-in 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    @keyframes auth-in {
+      from { opacity: 0; transform: translateY(20px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
     }
     .auth-logo {
       text-align: center;
-      margin-bottom: 30px;
+      margin-bottom: 24px;
     }
-    .auth-logo img {
-      height: 60px;
-    }
-    .auth-logo h1 {
-      color: #333;
-      font-size: 24px;
-      margin-top: 10px;
-    }
-    .form-group {
-      margin-bottom: 16px;
-    }
-    .form-group label {
-      display: block;
-      margin-bottom: 6px;
-      color: #555;
-      font-size: 14px;
-      font-weight: 500;
-    }
-    .form-group input {
-      width: 100%;
-      padding: 12px 14px;
-      border: 2px solid #e0e0e0;
-      border-radius: 10px;
-      font-size: 15px;
-      transition: border-color 0.3s;
-    }
-    .form-group input:focus {
-      outline: none;
-      border-color: #7CB342;
-    }
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+    .auth-logo img { height: 50px; }
+    .auth-logos {
+      display: flex;
+      align-items: center;
+      justify-content: center;
       gap: 12px;
     }
-    .btn {
-      width: 100%;
-      padding: 14px;
-      border: none;
-      border-radius: 10px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s;
-      margin-top: 10px;
+    .auth-logos .logo-divider {
+      width: 1px;
+      height: 36px;
+      background: var(--gray-300);
+      flex-shrink: 0;
     }
-    .btn-primary {
-      background: #7CB342;
-      color: white;
+    .auth-logos .logo-inova {
+      height: 38px;
+      width: auto;
     }
-    .btn-primary:hover {
-      background: #689F38;
-    }
-    .btn-primary:disabled {
-      background: #ccc;
-      cursor: not-allowed;
+    .auth-logo h1 {
+      color: var(--gray-900);
+      font-size: 22px;
+      margin-top: 12px;
+      font-weight: 700;
     }
     .auth-footer {
       text-align: center;
       margin-top: 20px;
-      color: #666;
+      color: var(--gray-500);
       font-size: 14px;
     }
     .auth-footer a {
-      color: #7CB342;
+      color: var(--primary-dark);
       text-decoration: none;
-      font-weight: 500;
+      font-weight: 600;
     }
+    .auth-footer a:active { opacity: 0.7; }
     .error-message {
       background: #ffebee;
       color: #c62828;
-      padding: 10px 14px;
-      border-radius: 8px;
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
       margin-bottom: 16px;
-      font-size: 13px;
+      font-size: 14px;
       display: none;
     }
-    .error-message.show {
-      display: block;
-    }
+    .error-message.show { display: block; animation: auth-in 0.2s ease; }
     .success-message {
       background: #e8f5e9;
       color: #2e7d32;
-      padding: 20px;
-      border-radius: 10px;
+      padding: 24px;
+      border-radius: var(--radius-sm);
       text-align: center;
       display: none;
     }
-    .success-message.show {
-      display: block;
-    }
+    .success-message.show { display: block; animation: auth-in 0.3s ease; }
+    .success-message h3 { font-size: 18px; margin-bottom: 8px; }
+    .success-message p { margin-bottom: 14px; font-size: 14px; }
+    .success-message a { color: #2e7d32; font-weight: 600; }
     .password-hint {
       font-size: 12px;
-      color: #888;
+      color: var(--gray-500);
       margin-top: 4px;
     }
   </style>
 </head>
 <body>
+  <a href="/" class="back-link">← Map</a>
+
   <div class="auth-container">
     <div class="auth-logo">
-      <img src="/E-Link-1024x500.png" alt="eLink">
-      <h1>Create Account</h1>
+      <div class="auth-logos">
+        <img src="/E-Link-1024x500.png" alt="eLink">
+        <span class="logo-divider"></span>
+        <img src="/inova-logo.png" alt="INOVA" class="logo-inova">
+      </div>
+      <h1 data-i18n="create_account">Create Account</h1>
     </div>
 
     <div class="error-message" id="errorMessage"></div>
     <div class="success-message" id="successMessage">
-      <h3>✅ Account Created!</h3>
-      <p>Please check your email to verify your account.</p>
-      <a href="/login.html" style="color: #2e7d32; font-weight: 500;">Go to Login</a>
+      <h3 data-i18n="account_created">Account Created!</h3>
+      <p data-i18n="check_email">You can now sign in with your account.</p>
+      <a href="/login.html" data-i18n="go_to_login">Go to Login</a>
     </div>
 
     <form id="registerForm">
       <div class="form-row">
         <div class="form-group">
-          <label for="firstName">First Name</label>
-          <input type="text" id="firstName" placeholder="John" required>
+          <label for="firstName" data-i18n="first_name">First Name</label>
+          <input type="text" id="firstName" required autocomplete="given-name">
         </div>
         <div class="form-group">
-          <label for="lastName">Last Name</label>
-          <input type="text" id="lastName" placeholder="Doe" required>
+          <label for="lastName" data-i18n="last_name">Last Name</label>
+          <input type="text" id="lastName" required autocomplete="family-name">
         </div>
       </div>
 
       <div class="form-group">
-        <label for="email">Email</label>
-        <input type="email" id="email" placeholder="you@example.com" required>
+        <label for="email" data-i18n="email">Email</label>
+        <input type="email" id="email" placeholder="you@example.com" required autocomplete="email">
       </div>
 
       <div class="form-group">
-        <label for="password">Password</label>
-        <input type="password" id="password" placeholder="Create a password" required>
-        <p class="password-hint">Min 8 chars, 1 uppercase, 1 number</p>
+        <label for="password" data-i18n="password">Password</label>
+        <input type="password" id="password" required autocomplete="new-password">
+        <p class="password-hint" data-i18n="password_hint">Min 8 chars, 1 uppercase, 1 number</p>
       </div>
 
-      <button type="submit" class="btn btn-primary" id="registerBtn">Create Account</button>
+      <button type="submit" class="btn btn-primary btn-full" id="registerBtn" data-i18n="create_account">Create Account</button>
     </form>
 
     <div class="auth-footer" id="authFooter">
-      Already have an account? <a href="/login.html">Sign in</a>
+      <span data-i18n="have_account">Already have an account?</span> <a href="/login.html" data-i18n="sign_in">Sign in</a>
     </div>
   </div>
 
+  <script src="/i18n.js"></script>
   <script>
-    // Check if already logged in
     const token = localStorage.getItem('accessToken');
-    if (token) {
-      window.location.href = '/';
-    }
+    if (token) window.location.href = '/';
 
     document.getElementById('registerForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      
+
       const firstName = document.getElementById('firstName').value;
       const lastName = document.getElementById('lastName').value;
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
       const btn = document.getElementById('registerBtn');
       const errorDiv = document.getElementById('errorMessage');
-      
+
       btn.disabled = true;
-      btn.textContent = 'Creating account...';
+      btn.textContent = t('creating_account');
       errorDiv.classList.remove('show');
-      
+
       try {
         const response = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            email, 
-            password, 
-            firstName, 
+          body: JSON.stringify({
+            email,
+            password,
+            firstName,
             lastName,
             name: `${firstName} ${lastName}`
           })
         });
-        
+
         const data = await response.json();
-        
+
         if (response.ok) {
           document.getElementById('registerForm').style.display = 'none';
           document.getElementById('authFooter').style.display = 'none';
           document.getElementById('successMessage').classList.add('show');
         } else {
-          errorDiv.textContent = data.error || 'Registration failed';
+          errorDiv.textContent = data.error || t('registration_failed');
           errorDiv.classList.add('show');
         }
       } catch (error) {
-        errorDiv.textContent = 'Network error. Please try again.';
+        errorDiv.textContent = t('network_error');
         errorDiv.classList.add('show');
       } finally {
         btn.disabled = false;
-        btn.textContent = 'Create Account';
+        btn.textContent = t('create_account');
       }
     });
   </script>

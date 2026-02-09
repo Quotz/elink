@@ -4,267 +4,256 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#7CB342">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <title>My Profile - eLink</title>
   <link rel="stylesheet" href="/style.css">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #f5f5f5;
+      background: var(--gray-100);
       min-height: 100vh;
+      min-height: 100dvh;
+      overflow-y: auto;
+      padding-bottom: calc(var(--bottom-nav-height) + 20px);
     }
-    .header {
-      background: linear-gradient(135deg, #7CB342 0%, #689F38 100%);
+    .profile-header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
       color: white;
-      padding: 20px;
+      padding: 20px 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
-    .header h1 {
-      font-size: 20px;
-    }
-    .header-actions {
-      display: flex;
-      gap: 10px;
-    }
+    .profile-header h1 { font-size: 20px; font-weight: 700; }
+    .header-actions { display: flex; gap: 8px; }
     .btn-small {
-      padding: 8px 16px;
+      padding: 8px 14px;
       border: none;
-      border-radius: 8px;
-      font-size: 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
       cursor: pointer;
       background: rgba(255,255,255,0.2);
       color: white;
+      min-height: 36px;
+      transition: background 0.2s;
     }
+    .btn-small:active { background: rgba(255,255,255,0.3); }
     .container {
       max-width: 600px;
       margin: 0 auto;
-      padding: 20px;
+      padding: 16px;
     }
     .card {
       background: white;
-      border-radius: 16px;
-      padding: 24px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow);
     }
     .card-title {
-      font-size: 18px;
-      font-weight: 600;
-      margin-bottom: 16px;
-      color: #333;
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 14px;
+      color: var(--gray-900);
     }
     .wallet-balance {
       text-align: center;
-      padding: 30px 20px;
+      padding: 24px 16px;
     }
     .balance-amount {
-      font-size: 48px;
+      font-size: 42px;
       font-weight: 700;
-      color: #7CB342;
+      color: var(--primary);
     }
     .balance-label {
-      color: #888;
-      font-size: 14px;
-      margin-top: 8px;
-    }
-    .btn {
-      padding: 14px 24px;
-      border: none;
-      border-radius: 10px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-    .btn-primary {
-      background: #7CB342;
-      color: white;
-      width: 100%;
-    }
-    .btn-primary:hover {
-      background: #689F38;
-    }
-    .btn-danger {
-      background: #f44336;
-      color: white;
-    }
-    .btn-secondary {
-      background: #f0f0f0;
-      color: #333;
+      color: var(--gray-500);
+      font-size: 13px;
+      margin-top: 6px;
     }
     .user-info {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 14px;
     }
-    .user-avatar {
-      width: 60px;
-      height: 60px;
+    .user-avatar-lg {
+      width: 56px;
+      height: 56px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #7CB342, #689F38);
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
       display: flex;
       align-items: center;
       justify-content: center;
       color: white;
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 600;
+      flex-shrink: 0;
     }
     .user-details h3 {
-      font-size: 18px;
-      color: #333;
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--gray-900);
     }
     .user-details p {
-      font-size: 14px;
-      color: #888;
+      font-size: 13px;
+      color: var(--gray-500);
+      margin-top: 3px;
+    }
+    .user-role {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
       margin-top: 4px;
+      background: #e8f5e9;
+      color: #2e7d32;
     }
     .reservation-item {
-      border: 1px solid #e0e0e0;
+      border: 1px solid var(--gray-200);
       border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 12px;
+      padding: 14px;
+      margin-bottom: 10px;
     }
     .reservation-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
-    .reservation-station {
-      font-weight: 600;
-      color: #333;
-    }
+    .reservation-station { font-weight: 600; color: var(--gray-900); font-size: 14px; }
     .reservation-status {
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 16px;
+      font-size: 11px;
+      font-weight: 600;
     }
-    .status-active {
-      background: #e8f5e9;
-      color: #2e7d32;
-    }
-    .status-completed {
-      background: #e3f2fd;
-      color: #1565c0;
-    }
-    .status-cancelled {
-      background: #ffebee;
-      color: #c62828;
-    }
-    .reservation-time {
-      font-size: 14px;
-      color: #666;
-    }
+    .status-active { background: #e8f5e9; color: #2e7d32; }
+    .status-completed { background: #e3f2fd; color: #1565c0; }
+    .status-cancelled { background: #ffebee; color: #c62828; }
+    .reservation-time { font-size: 13px; color: var(--gray-500); }
     .empty-state {
       text-align: center;
-      padding: 40px 20px;
-      color: #888;
+      padding: 30px 16px;
+      color: var(--gray-500);
+      font-size: 14px;
     }
     .transaction-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 12px 0;
-      border-bottom: 1px solid #f0f0f0;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--gray-100);
+      min-height: 44px;
     }
-    .transaction-item:last-child {
-      border-bottom: none;
-    }
-    .transaction-type {
-      font-weight: 500;
-      color: #333;
-    }
-    .transaction-date {
-      font-size: 12px;
-      color: #888;
-      margin-top: 4px;
-    }
-    .transaction-amount {
-      font-weight: 600;
-      font-size: 16px;
-    }
-    .amount-positive {
-      color: #2e7d32;
-    }
-    .amount-negative {
-      color: #333;
-    }
-    .modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0,0,0,0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      z-index: 1000;
-    }
-    .modal.hidden {
-      display: none;
-    }
-    .modal-content {
-      background: white;
-      border-radius: 16px;
-      width: 100%;
-      max-width: 400px;
-      overflow: hidden;
-    }
-    .modal-header {
-      padding: 20px;
-      border-bottom: 1px solid #f0f0f0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .modal-header h3 {
-      font-size: 18px;
-    }
-    .close-btn {
-      background: none;
-      border: none;
-      font-size: 24px;
-      cursor: pointer;
-      color: #888;
-    }
-    .modal-body {
-      padding: 20px;
-    }
+    .transaction-item:last-child { border-bottom: none; }
+    .transaction-type { font-weight: 500; color: var(--gray-900); font-size: 14px; }
+    .transaction-date { font-size: 12px; color: var(--gray-500); margin-top: 3px; }
+    .transaction-amount { font-weight: 700; font-size: 15px; }
+    .amount-positive { color: #2e7d32; }
+    .amount-negative { color: var(--gray-900); }
     .amount-options {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 10px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
     .amount-btn {
-      padding: 16px;
-      border: 2px solid #e0e0e0;
+      padding: 14px;
+      border: 2px solid var(--gray-200);
       border-radius: 10px;
       background: white;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s;
+      min-height: 48px;
     }
-    .amount-btn:hover, .amount-btn.selected {
-      border-color: #7CB342;
+    .amount-btn:active, .amount-btn.selected {
+      border-color: var(--primary);
       background: #f1f8e9;
-      color: #7CB342;
+      color: var(--primary-dark);
     }
-    .hidden { display: none !important; }
+    .admin-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px;
+      background: var(--gray-100);
+      border-radius: 10px;
+      color: var(--gray-700);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 14px;
+      transition: background 0.2s;
+      min-height: 48px;
+    }
+    .admin-link:active { background: var(--gray-200); }
+    .logout-btn {
+      width: 100%;
+      padding: 14px;
+      border: 2px solid var(--gray-200);
+      border-radius: var(--radius-sm);
+      background: white;
+      color: var(--danger);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      min-height: 48px;
+    }
+    .logout-btn:active { background: #ffebee; border-color: var(--danger); }
+
+    /* Bottom nav for profile page */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: var(--bottom-nav-height);
+      background: white;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.08);
+      z-index: 1002;
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 6px 16px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      color: var(--gray-500);
+      font-size: 10px;
+      font-weight: 500;
+      min-width: 64px;
+      min-height: 44px;
+      justify-content: center;
+    }
+    .nav-item.active { color: var(--primary); }
+    .nav-item:active { opacity: 0.7; }
+
+    @supports (padding-top: env(safe-area-inset-top)) {
+      .profile-header { padding-top: max(20px, env(safe-area-inset-top)); }
+      .bottom-nav {
+        padding-bottom: env(safe-area-inset-bottom);
+        height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));
+      }
+    }
   </style>
 </head>
 <body>
-  <header class="header">
-    <h1>My Profile</h1>
+  <header class="profile-header">
+    <h1 data-i18n="profile">My Profile</h1>
     <div class="header-actions">
-      <button class="btn-small" onclick="window.location.href='/'">Map</button>
-      <button class="btn-small" onclick="logout()">Logout</button>
+      <button class="btn-small" id="langToggle" onclick="toggleLanguage();refreshProfilePage()">MK</button>
+      <button class="btn-small" id="currencyToggle" onclick="toggleCurrency();refreshProfilePage()">MKD</button>
+      <button class="btn-small" onclick="window.location.href='/'">← <span data-i18n="back_to_map">Map</span></button>
     </div>
   </header>
 
@@ -272,67 +261,70 @@
     <!-- User Info -->
     <div class="card">
       <div class="user-info">
-        <div class="user-avatar" id="userAvatar">U</div>
+        <div class="user-avatar-lg" id="userAvatar">U</div>
         <div class="user-details">
           <h3 id="userName">User</h3>
           <p id="userEmail">email@example.com</p>
+          <span class="user-role" id="userRole" style="display:none"></span>
         </div>
       </div>
     </div>
 
+    <!-- Admin Link (shown if admin) -->
+    <a href="/admin.html" class="admin-link hidden" id="adminLink">
+      ⚙️ <span data-i18n="admin_panel_link">Admin Panel — Manage stations & users</span>
+    </a>
+
     <!-- Wallet -->
     <div class="card">
-      <h2 class="card-title">Wallet</h2>
+      <h2 class="card-title" data-i18n="wallet">Wallet</h2>
       <div class="wallet-balance">
         <div class="balance-amount" id="balanceAmount">€0.00</div>
-        <div class="balance-label">Available Balance</div>
+        <div class="balance-label" data-i18n="balance">Available Balance</div>
       </div>
-      <button class="btn btn-primary" onclick="showTopUpModal()">+ Add Funds</button>
+      <button class="btn btn-primary btn-full" onclick="showTopUpModal()" data-i18n="top_up">+ Add Funds</button>
     </div>
 
     <!-- Reservations -->
     <div class="card">
-      <h2 class="card-title">My Reservations</h2>
+      <h2 class="card-title" data-i18n="my_reservations">My Reservations</h2>
       <div id="reservationsList">
-        <div class="empty-state">No reservations yet</div>
+        <div class="empty-state" data-i18n="no_reservations">No reservations yet</div>
       </div>
     </div>
 
     <!-- Recent Transactions -->
     <div class="card">
-      <h2 class="card-title">Recent Transactions</h2>
+      <h2 class="card-title" data-i18n="recent_transactions">Recent Transactions</h2>
       <div id="transactionsList">
-        <div class="empty-state">No transactions yet</div>
+        <div class="empty-state" data-i18n="no_transactions">No transactions yet</div>
       </div>
     </div>
 
     <!-- Charging History -->
     <div class="card">
-      <h2 class="card-title">Charging History</h2>
+      <h2 class="card-title" data-i18n="charging_history">Charging History</h2>
       <div id="chargingHistoryList">
-        <div class="empty-state">No charging sessions yet</div>
+        <div class="empty-state" data-i18n="no_charging_sessions">No charging sessions yet</div>
       </div>
     </div>
+
+    <!-- Logout -->
+    <button class="logout-btn" onclick="logout()">🚪 <span data-i18n="logout">Log Out</span></button>
+    <div style="height:20px"></div>
   </div>
 
   <!-- Top Up Modal -->
   <div class="modal hidden" id="topUpModal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>Add Funds</h3>
+        <h3 data-i18n="add_funds">Add Funds</h3>
         <button class="close-btn" onclick="hideTopUpModal()">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="amount-options">
-          <button class="amount-btn" onclick="selectAmount(10)">€10</button>
-          <button class="amount-btn" onclick="selectAmount(20)">€20</button>
-          <button class="amount-btn" onclick="selectAmount(50)">€50</button>
-          <button class="amount-btn" onclick="selectAmount(100)">€100</button>
-          <button class="amount-btn" onclick="selectAmount(200)">€200</button>
-          <button class="amount-btn" onclick="selectAmount(500)">€500</button>
-        </div>
-        <button class="btn btn-primary" id="topUpBtn" onclick="processTopUp()" disabled>
-          Select Amount
+        <div class="amount-options" id="amountOptions"></div>
+        <button class="btn btn-primary btn-full" id="topUpBtn" onclick="processTopUp()" disabled>
+          <span data-i18n="select_amount">Select Amount</span>
         </button>
       </div>
     </div>
@@ -342,28 +334,44 @@
   <div class="modal hidden" id="paymentModal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>Payment</h3>
+        <h3 data-i18n="payment">Payment</h3>
         <button class="close-btn" onclick="hidePaymentModal()">&times;</button>
       </div>
       <div class="modal-body">
-        <p style="margin-bottom: 20px; color: #666;">Top up €<span id="paymentAmount">0</span></p>
-        <div style="background: #f5f5f5; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 20px;">
-          <p style="color: #888; font-size: 14px;">🔒 Secure Payment (Demo)</p>
-          <p style="margin-top: 10px; font-family: monospace;">**** **** **** 4242</p>
+        <p style="margin-bottom:16px;color:var(--gray-600);"><span data-i18n="top_up_amount">Top up</span> <span id="paymentAmount">€0</span></p>
+        <div style="background:var(--gray-100);padding:18px;border-radius:10px;text-align:center;margin-bottom:16px">
+          <p style="color:var(--gray-500);font-size:13px" data-i18n="secure_payment_demo">Secure Payment (Demo)</p>
+          <p style="margin-top:8px;font-family:monospace;font-size:16px;color:var(--gray-700)">**** **** **** 4242</p>
         </div>
-        <button class="btn btn-primary" id="payNowBtn" onclick="confirmTopUp()">
-          Pay Now
+        <button class="btn btn-primary btn-full" id="payNowBtn" onclick="confirmTopUp()">
+          <span data-i18n="pay_now">Pay Now</span>
         </button>
       </div>
     </div>
   </div>
 
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <button class="nav-item" onclick="window.location.href='/'">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+      <span data-i18n="map">Map</span>
+    </button>
+    <button class="nav-item" onclick="window.location.href='/'">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span data-i18n="search">Search</span>
+    </button>
+    <button class="nav-item active">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span data-i18n="profile">Profile</span>
+    </button>
+  </nav>
+
+  <script src="/i18n.js"></script>
   <script>
     let currentUser = null;
     let selectedAmount = 0;
     let authToken = localStorage.getItem('accessToken');
 
-    // Check auth
     if (!authToken) {
       window.location.href = '/login.html';
     }
@@ -379,21 +387,27 @@
       const userStr = localStorage.getItem('user');
       if (userStr) {
         currentUser = JSON.parse(userStr);
-        document.getElementById('userName').textContent = 
+        document.getElementById('userName').textContent =
           `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'User';
         document.getElementById('userEmail').textContent = currentUser.email;
-        document.getElementById('userAvatar').textContent = 
+        document.getElementById('userAvatar').textContent =
           (currentUser.firstName?.[0] || currentUser.email[0]).toUpperCase();
+
+        if (currentUser.role === 'admin') {
+          const roleEl = document.getElementById('userRole');
+          roleEl.textContent = t('admin');
+          roleEl.style.display = '';
+          document.getElementById('adminLink').classList.remove('hidden');
+        }
       }
     }
 
     async function loadBalance() {
       try {
-        const response = await fetch('/api/wallet/balance', {
-          headers: getAuthHeaders()
-        });
+        const response = await fetch('/api/wallet/balance', { headers: getAuthHeaders() });
         const data = await response.json();
-        document.getElementById('balanceAmount').textContent = `€${data.balance.toFixed(2)}`;
+        const balEl = document.getElementById('balanceAmount');
+        balEl.textContent = typeof formatPrice === 'function' ? formatPrice(data.balance) : `€${data.balance.toFixed(2)}`;
       } catch (error) {
         console.error('Failed to load balance:', error);
       }
@@ -401,14 +415,12 @@
 
     async function loadReservations() {
       try {
-        const response = await fetch('/api/reservations/my', {
-          headers: getAuthHeaders()
-        });
+        const response = await fetch('/api/reservations/my', { headers: getAuthHeaders() });
         const data = await response.json();
-        
+
         const container = document.getElementById('reservationsList');
         if (data.length === 0) {
-          container.innerHTML = '<div class="empty-state">No reservations yet</div>';
+          container.innerHTML = `<div class="empty-state">${t('no_reservations')}</div>`;
           return;
         }
 
@@ -416,16 +428,16 @@
           const start = new Date(r.startTime);
           const end = new Date(r.endTime);
           const dateStr = start.toLocaleDateString();
-          const timeStr = `${start.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${end.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
-          
+          const timeStr = `${start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - ${end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+
           return `
             <div class="reservation-item">
               <div class="reservation-header">
-                <span class="reservation-station">Charger ${r.chargerId}</span>
+                <span class="reservation-station">${t('charger')} ${r.chargerId}</span>
                 <span class="reservation-status status-${r.status}">${r.status}</span>
               </div>
               <div class="reservation-time">${dateStr} · ${timeStr}</div>
-              ${r.status === 'active' ? `<button class="btn btn-danger" style="margin-top: 10px; padding: 8px; font-size: 14px;" onclick="cancelReservation('${r.id}')">Cancel</button>` : ''}
+              ${r.status === 'active' ? `<button class="btn btn-danger" style="margin-top:10px;padding:8px;font-size:13px" onclick="cancelReservation('${r.id}')">${t('cancel')}</button>` : ''}
             </div>
           `;
         }).join('');
@@ -436,28 +448,26 @@
 
     async function loadChargingHistory() {
       try {
-        const response = await fetch('/api/users/charging-history', {
-          headers: getAuthHeaders()
-        });
+        const response = await fetch('/api/users/charging-history', { headers: getAuthHeaders() });
         const data = await response.json();
-        
+
         const container = document.getElementById('chargingHistoryList');
         if (!data.history || data.history.length === 0) {
-          container.innerHTML = '<div class="empty-state">No charging sessions yet</div>';
+          container.innerHTML = `<div class="empty-state">${t('no_charging_sessions')}</div>`;
           return;
         }
 
         container.innerHTML = data.history.slice(0, 10).map(session => {
           const date = new Date(session.startTime).toLocaleDateString();
-          const duration = session.endTime 
+          const duration = session.endTime
             ? Math.round((new Date(session.endTime) - new Date(session.startTime)) / 60000) + ' min'
-            : 'In progress';
+            : t('in_progress');
           const energy = session.totalKwh ? session.totalKwh.toFixed(2) + ' kWh' : 'N/A';
-          const cost = session.totalCost ? '€' + session.totalCost.toFixed(2) : 'N/A';
-          
+          const cost = session.totalCost ? formatPrice(session.totalCost) : 'N/A';
+
           return `<div class="transaction-item">
               <div>
-                <div class="transaction-type">Charger ${session.chargerId}</div>
+                <div class="transaction-type">${t('charger')} ${session.chargerId}</div>
                 <div class="transaction-date">${date} · ${duration} · ${energy}</div>
               </div>
               <div class="transaction-amount">${cost}</div>
@@ -470,30 +480,28 @@
 
     async function loadTransactions() {
       try {
-        const response = await fetch('/api/wallet/transactions', {
-          headers: getAuthHeaders()
-        });
+        const response = await fetch('/api/wallet/transactions', { headers: getAuthHeaders() });
         const data = await response.json();
-        
+
         const container = document.getElementById('transactionsList');
         if (!data.transactions || data.transactions.length === 0) {
-          container.innerHTML = '<div class="empty-state">No transactions yet</div>';
+          container.innerHTML = `<div class="empty-state">${t('no_transactions')}</div>`;
           return;
         }
 
-        container.innerHTML = data.transactions.slice(0, 5).map(t => {
-          const isTopUp = t.type === 'topup';
+        container.innerHTML = data.transactions.slice(0, 5).map(tx => {
+          const isTopUp = tx.type === 'topup';
           const amountClass = isTopUp ? 'amount-positive' : 'amount-negative';
           const sign = isTopUp ? '+' : '';
-          const date = new Date(t.timestamp).toLocaleDateString();
-          
+          const date = new Date(tx.timestamp).toLocaleDateString();
+
           return `
             <div class="transaction-item">
               <div>
-                <div class="transaction-type">${isTopUp ? 'Top Up' : 'Charging Payment'}</div>
+                <div class="transaction-type">${isTopUp ? t('top_up_label') : t('charging_payment')}</div>
                 <div class="transaction-date">${date}</div>
               </div>
-              <div class="transaction-amount ${amountClass}">${sign}€${Math.abs(t.amount).toFixed(2)}</div>
+              <div class="transaction-amount ${amountClass}">${sign}${formatPrice(Math.abs(tx.amount))}</div>
             </div>
           `;
         }).join('');
@@ -502,11 +510,22 @@
       }
     }
 
+    const TOP_UP_AMOUNTS = [10, 20, 50, 100, 200, 500]; // EUR values
+
+    function renderTopUpAmounts() {
+      const container = document.getElementById('amountOptions');
+      if (!container) return;
+      container.innerHTML = TOP_UP_AMOUNTS.map(amt =>
+        `<button class="amount-btn" onclick="selectAmount(${amt}, this)">${formatPrice(amt)}</button>`
+      ).join('');
+    }
+
     function showTopUpModal() {
       selectedAmount = 0;
-      document.querySelectorAll('.amount-btn').forEach(btn => btn.classList.remove('selected'));
-      document.getElementById('topUpBtn').textContent = 'Select Amount';
-      document.getElementById('topUpBtn').disabled = true;
+      renderTopUpAmounts();
+      const topUpBtn = document.getElementById('topUpBtn');
+      topUpBtn.querySelector('[data-i18n]').textContent = t('select_amount');
+      topUpBtn.disabled = true;
       document.getElementById('topUpModal').classList.remove('hidden');
     }
 
@@ -514,17 +533,18 @@
       document.getElementById('topUpModal').classList.add('hidden');
     }
 
-    function selectAmount(amount) {
+    function selectAmount(amount, el) {
       selectedAmount = amount;
       document.querySelectorAll('.amount-btn').forEach(btn => btn.classList.remove('selected'));
-      event.target.classList.add('selected');
-      document.getElementById('topUpBtn').textContent = `Add €${amount}`;
-      document.getElementById('topUpBtn').disabled = false;
+      if (el) el.classList.add('selected');
+      const topUpBtn = document.getElementById('topUpBtn');
+      topUpBtn.querySelector('[data-i18n]').textContent = `${t('add_funds')} ${formatPrice(amount)}`;
+      topUpBtn.disabled = false;
     }
 
     function processTopUp() {
       hideTopUpModal();
-      document.getElementById('paymentAmount').textContent = selectedAmount;
+      document.getElementById('paymentAmount').textContent = formatPrice(selectedAmount);
       document.getElementById('paymentModal').classList.remove('hidden');
     }
 
@@ -535,7 +555,7 @@
     async function confirmTopUp() {
       const btn = document.getElementById('payNowBtn');
       btn.disabled = true;
-      btn.textContent = 'Processing...';
+      btn.querySelector('[data-i18n]').textContent = t('processing');
 
       try {
         const response = await fetch('/api/wallet/topup', {
@@ -548,20 +568,20 @@
           hidePaymentModal();
           loadBalance();
           loadTransactions();
-          alert('Payment successful!');
+          alert(t('payment_successful'));
         } else {
-          alert('Payment failed. Please try again.');
+          alert(t('payment_failed_retry'));
         }
       } catch (error) {
-        alert('Network error. Please try again.');
+        alert(t('network_error'));
       } finally {
         btn.disabled = false;
-        btn.textContent = 'Pay Now';
+        btn.querySelector('[data-i18n]').textContent = t('pay_now');
       }
     }
 
     async function cancelReservation(id) {
-      if (!confirm('Cancel this reservation?')) return;
+      if (!confirm(t('cancel_reservation'))) return;
 
       try {
         const response = await fetch(`/api/reservations/${id}/cancel`, {
@@ -572,10 +592,10 @@
         if (response.ok) {
           loadReservations();
         } else {
-          alert('Failed to cancel reservation');
+          alert(t('failed_cancel_reservation'));
         }
       } catch (error) {
-        alert('Network error');
+        alert(t('network_error'));
       }
     }
 
@@ -586,6 +606,16 @@
       window.location.href = '/login.html';
     }
 
+    function refreshProfilePage() {
+      applyTranslations();
+      updateToggleUI();
+      loadUserData();
+      loadBalance();
+      loadReservations();
+      loadTransactions();
+      loadChargingHistory();
+    }
+
     // Load all data
     loadUserData();
     loadBalance();
@@ -593,7 +623,6 @@
     loadTransactions();
     loadChargingHistory();
 
-    // Refresh every 30 seconds
     setInterval(() => {
       loadBalance();
       loadReservations();

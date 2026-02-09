@@ -74,7 +74,7 @@ router.get('/', async (req, res) => {
       online: overview.filter(c => c.connected).length,
       serverTime: new Date().toISOString(),
       serverIp: '46.225.21.7',
-      websocketUrl: 'wss://staging.elink.mk:443/ocpp/{chargerId}'
+      websocketUrl: 'wss://app.elink.mk:443/ocpp/{chargerId}'
     });
   } catch (error) {
     console.error('Diagnostics overview error:', error);

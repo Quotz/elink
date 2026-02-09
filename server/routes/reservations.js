@@ -3,41 +3,21 @@ const router = express.Router();
 const db = require('../database');
 const { authenticateToken: authenticate } = require('../auth');
 
-// Create a reservation
+const RESERVATION_COOLDOWN_SECONDS = 900; // 15 minutes
+
+// Create a reservation (30 min from now)
 router.post('/', authenticate, async (req, res) => {
   try {
-    const { chargerId, startTime } = req.body;
+    const { chargerId } = req.body;
     const userId = req.user.id;
 
-    // Validate input
-    if (!chargerId || !startTime) {
-      return res.status(400).json({ error: 'Charger ID and start time required' });
+    if (!chargerId) {
+      return res.status(400).json({ error: 'Charger ID is required' });
     }
 
-    // Parse start time
-    const start = Math.floor(new Date(startTime).getTime() / 1000);
-    if (isNaN(start)) {
-      return res.status(400).json({ error: 'Invalid start time' });
-    }
-
-    // Must be in future
     const now = Math.floor(Date.now() / 1000);
-    if (start < now) {
-      return res.status(400).json({ error: 'Start time must be in the future' });
-    }
-
-    // Max 24 hours in advance
-    if (start > now + 24 * 3600) {
-      return res.status(400).json({ error: 'Cannot reserve more than 24 hours in advance' });
-    }
-
-    // 30 minute slots only
-    const minutes = new Date(startTime).getMinutes();
-    if (minutes !== 0 && minutes !== 30) {
-      return res.status(400).json({ error: 'Reservations must start on the hour or half-hour' });
-    }
-
-    const end = start + 30 * 60; // 30 minutes
+    const start = now;
+    const end = now + 30 * 60; // 30 minutes from now
 
     // Check user doesn't have active reservation
     const hasActive = await db.hasActiveReservation(userId);
@@ -45,10 +25,19 @@ router.post('/', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'You already have an active reservation' });
     }
 
-    // Check for conflicts
+    // Check cooldown (15 min since last reservation)
+    const cooldownSince = now - RESERVATION_COOLDOWN_SECONDS;
+    const recentReservation = await db.getRecentReservation(userId, cooldownSince);
+    if (recentReservation) {
+      const waitSeconds = RESERVATION_COOLDOWN_SECONDS - (now - recentReservation.created_at);
+      const waitMinutes = Math.ceil(waitSeconds / 60);
+      return res.status(429).json({ error: `Please wait ${waitMinutes} minutes before reserving again` });
+    }
+
+    // Check for conflicts on this charger
     const conflicts = await db.getChargerReservations(chargerId, start, end);
     if (conflicts.length > 0) {
-      return res.status(409).json({ error: 'Time slot is already reserved' });
+      return res.status(409).json({ error: 'This charger is already reserved' });
     }
 
     // Create reservation
@@ -60,7 +49,7 @@ router.post('/', authenticate, async (req, res) => {
     });
 
     res.status(201).json({
-      message: 'Reservation created successfully',
+      message: 'Reserved for 30 minutes',
       reservation: {
         id: reservation.id,
         chargerId: reservation.chargerId,

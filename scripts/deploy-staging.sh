@@ -5,7 +5,7 @@
 set -e
 
 # Configuration
-STAGING_HOST="staging.elink.mk"
+STAGING_HOST="app.elink.mk"
 STAGING_USER="root"  # Or your SSH user
 APP_DIR="/opt/elink-staging"
 REPO_URL="https://github.com/quotz/elink.git"

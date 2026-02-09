@@ -311,7 +311,7 @@ async function saveCharger(event) {
     
     if (editMode) {
       // Update existing
-      response = await fetch(`/api/stations/${currentEditId}`, {
+      response = await fetch(`/api/stations/${encodeURIComponent(currentEditId)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -358,7 +358,7 @@ async function deleteStation(stationId) {
   }
   
   try {
-    const response = await fetch(`/api/stations/${stationId}`, {
+    const response = await fetch(`/api/stations/${encodeURIComponent(stationId)}`, {
       method: 'DELETE'
     });
     

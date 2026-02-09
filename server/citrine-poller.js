@@ -57,31 +57,33 @@ class CitrinePoller {
   }
 
   async pollStation(stationId) {
+    // Skip stations connected via simulation (demo stations)
+    const stationCheck = store.getStation(stationId);
+    if (stationCheck && stationCheck.connectionSource === 'simulation') return;
+
     try {
       // Try to get active transactions first (indicates charging state)
-      let hasActiveTransaction = false;
+      let activeTxList = [];
       try {
-        const activeTx = await citrineClient.getActiveTransactions(stationId);
-        hasActiveTransaction = activeTx && activeTx.length > 0;
+        activeTxList = await citrineClient.getActiveTransactions(stationId);
       } catch (txError) {
         // Endpoint may not exist, continue without transaction data
-        hasActiveTransaction = false;
       }
-      
+      const hasActiveTransaction = activeTxList && activeTxList.length > 0;
+
       // Get station status from CitrineOS
       let statusData = null;
       try {
         statusData = await citrineClient.getStationStatus(stationId);
       } catch (statusError) {
         // If status endpoint fails, station might not be registered
-        console.log();
         throw statusError;
       }
-      
+
       // Determine station state
       let newStatus = 'Available';
       let isConnected = true;
-      
+
       if (hasActiveTransaction) {
         newStatus = 'Charging';
       } else if (statusData && statusData.connectors && statusData.connectors.length > 0) {
@@ -105,6 +107,11 @@ class CitrinePoller {
       // Update station in store
       const station = store.getStation(stationId);
       if (station) {
+        // Re-check: station may have become simulation-managed during our async poll
+        if (station.connectionSource === 'simulation') {
+          return;
+        }
+
         const updates = {
           connected: isConnected,
           status: newStatus,
@@ -112,8 +119,8 @@ class CitrinePoller {
         };
 
         // If there's an active transaction, update currentTransaction
-        if (hasActiveTransaction && activeTx[0]) {
-          const tx = activeTx[0];
+        if (hasActiveTransaction && activeTxList[0]) {
+          const tx = activeTxList[0];
           updates.currentTransaction = {
             id: String(tx.id || tx.transactionId),
             idTag: tx.idTag,
@@ -121,8 +128,8 @@ class CitrinePoller {
             startTime: tx.startTime || Date.now(),
             startMeter: tx.meterStart || 0
           };
-        } else if (station.currentTransaction && newStatus !== 'Charging') {
-          // Clear transaction if not charging
+        } else if (station.currentTransaction && station.connectionSource !== 'simulation' && newStatus !== 'Charging') {
+          // Clear transaction if not charging (but never clear simulated transactions)
           updates.currentTransaction = null;
         }
 
@@ -130,7 +137,7 @@ class CitrinePoller {
         if (station.status !== newStatus || station.connected !== isConnected) {
           store.updateStation(stationId, updates);
           console.log(`[CitrinePoller] ${stationId}: ${station.status} -> ${newStatus} (connected: ${isConnected})`);
-          
+
           // Broadcast update to all clients
           if (this.broadcast) {
             this.broadcast();
@@ -138,9 +145,9 @@ class CitrinePoller {
         }
       }
     } catch (error) {
-      // Station might not exist in CitrineOS yet, mark as offline
+      // Station might not exist in CitrineOS yet, mark as offline (but not simulation stations)
       const station = store.getStation(stationId);
-      if (station && station.connected) {
+      if (station && station.connected && station.connectionSource !== 'simulation') {
         store.updateStation(stationId, {
           connected: false,
           status: 'Offline',

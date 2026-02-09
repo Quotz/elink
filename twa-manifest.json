@@ -1,6 +1,6 @@
 {
   "packageId": "mk.elink.app",
-  "host": "staging.elink.mk",
+  "host": "app.elink.mk",
   "name": "eLink EV Charging",
   "launcherName": "eLink",
   "display": "standalone",
@@ -12,7 +12,7 @@
   "backgroundColor": "#7CB342",
   "enableNotifications": true,
   "startUrl": "/",
-  "iconUrl": "https://staging.elink.mk/E-Link-1024x500.png",
+  "iconUrl": "https://app.elink.mk/E-Link-1024x500.png",
   "maskableIconUrl": null,
   "monochromeIconUrl": null,
   "splashScreenFadeOutDuration": 300,

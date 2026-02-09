@@ -10,8 +10,11 @@ let citrineStatus = { available: false };
 let citrineStationStatus = {};
 let citrineCheckInterval = null;
 
-// Configuration
-const COST_PER_KWH = 0.35;
+// Demo strategy
+const DEMO_CHARGER_ID = '30004496';
+
+// Configuration - pricePerKwh comes from station data, fallback to default
+const DEFAULT_COST_PER_KWH = 0.15;
 const BATTERY_CAPACITY = 60;
 const INITIAL_BATTERY = 20;
 
@@ -21,6 +24,9 @@ let sessionData = {
   startTime: null,
   maxPower: 0
 };
+
+// Connection phase state
+let connectionPhase = null; // null | 'awaiting_car' | 'started' | 'timeout'
 
 // Auth state
 let currentUser = null;
@@ -45,49 +51,16 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(pollStationStatus, 10000);
 });
 
-// Initialize CitrineOS status indicator
-function initCitrineIndicator() {
-  const headerRight = document.querySelector('.header-right');
-  if (!headerRight) return;
-  
-  // Check if indicator already exists
-  if (document.getElementById('citrineIndicator')) return;
-  
-  const indicator = document.createElement('div');
-  indicator.id = 'citrineIndicator';
-  indicator.className = 'citrine-indicator';
-  indicator.innerHTML = `
-    <span class="citrine-dot"></span>
-    <span class="citrine-label">CitrineOS</span>
-  `;
-  indicator.style.cssText = 'display: flex; align-items: center; gap: 4px; font-size: 0.7rem; color: #6b7280; margin-top: 2px;';
-  headerRight.appendChild(indicator);
-}
-
-function updateCitrineIndicator() {
-  const indicator = document.getElementById('citrineIndicator');
-  if (!indicator) return;
-  
-  const dot = indicator.querySelector('.citrine-dot');
-  const label = indicator.querySelector('.citrine-label');
-  
-  if (citrineStatus.available) {
-    dot.style.cssText = 'width: 6px; height: 6px; border-radius: 50%; background: #10b981;';
-    label.textContent = 'CitrineOS';
-    label.style.color = '#10b981';
-  } else {
-    dot.style.cssText = 'width: 6px; height: 6px; border-radius: 50%; background: #9ca3af;';
-    label.textContent = 'CitrineOS';
-    label.style.color = '#9ca3af';
-  }
-}
+// CitrineOS indicator (status tracked internally, no visible UI element)
+function initCitrineIndicator() {}
+function updateCitrineIndicator() {}
 
 // Poll station status from backend (fallback when webhooks fail)
 async function pollStationStatus() {
   if (!selectedStation) return;
   
   try {
-    const response = await fetch(`/api/stations/${selectedStation.id}`);
+    const response = await fetch(`/api/stations/${encodeURIComponent(selectedStation.id)}`);
     if (response.ok) {
       const data = await response.json();
       // Merge updated data into selected station
@@ -116,16 +89,19 @@ function initAuth() {
 function updateAuthUI() {
   const headerRight = document.querySelector('.header-right');
   if (!headerRight) return;
-  
+
   // Remove existing user menu
   const existingMenu = document.getElementById('userMenu');
   if (existingMenu) existingMenu.remove();
-  
+
   const userMenu = document.createElement('div');
   userMenu.id = 'userMenu';
   userMenu.className = 'user-menu';
-  
+
   if (currentUser) {
+    const adminLink = currentUser.role === 'admin'
+      ? '<a href="/admin.html" class="dropdown-item">⚙️ Admin Panel</a>'
+      : '';
     userMenu.innerHTML = `
       <button class="user-menu-btn" onclick="toggleUserMenu()">
         <span class="user-avatar">${(currentUser.firstName?.[0] || currentUser.email[0]).toUpperCase()}</span>
@@ -134,6 +110,12 @@ function updateAuthUI() {
       </button>
       <div class="user-dropdown hidden" id="userDropdown">
         <a href="/profile.html" class="dropdown-item">👤 Profile & Wallet</a>
+        ${adminLink}
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-item" style="gap:10px;cursor:default">
+          <button class="toggle-btn" id="langToggle" onclick="event.stopPropagation();toggleLanguage()">MK</button>
+          <button class="toggle-btn" id="currencyToggle" onclick="event.stopPropagation();toggleCurrency()">MKD</button>
+        </div>
         <div class="dropdown-divider"></div>
         <button class="dropdown-item" onclick="logout()">🚪 Logout</button>
       </div>
@@ -146,11 +128,58 @@ function updateAuthUI() {
     `;
   }
   headerRight.appendChild(userMenu);
+
+  // Update bottom nav profile label
+  const profileLabel = document.getElementById('navProfileLabel');
+  if (profileLabel) {
+    profileLabel.textContent = currentUser ? t('profile') : t('sign_in');
+  }
+
+  // Update toggle UI labels
+  if (typeof updateToggleUI === 'function') updateToggleUI();
 }
 
 function toggleUserMenu() {
   const dropdown = document.getElementById('userDropdown');
   if (dropdown) dropdown.classList.toggle('hidden');
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.user-menu')) {
+    const dropdown = document.getElementById('userDropdown');
+    if (dropdown) dropdown.classList.add('hidden');
+  }
+});
+
+// Bottom Navigation
+function navMap() {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('navMapBtn').classList.add('active');
+  closePanel();
+  const searchBar = document.getElementById('searchBar');
+  if (searchBar) searchBar.style.display = '';
+  const searchResults = document.getElementById('searchResults');
+  if (searchResults) searchResults.classList.add('hidden');
+}
+
+function navSearch() {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('navSearchBtn').classList.add('active');
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput) {
+    const searchBar = document.getElementById('searchBar');
+    if (searchBar) searchBar.style.display = '';
+    searchInput.focus();
+  }
+}
+
+function navProfile() {
+  if (currentUser) {
+    window.location.href = '/profile.html';
+  } else {
+    window.location.href = '/login.html';
+  }
 }
 
 function logout() {
@@ -176,7 +205,7 @@ function initReservationUI() {
     reserveBtn.id = 'reserveBtn';
     reserveBtn.className = 'btn btn-secondary';
     reserveBtn.style.cssText = 'margin-top: 10px; width: 100%; display: none;';
-    reserveBtn.innerHTML = '📅 Reserve Slot';
+    reserveBtn.innerHTML = `📅 ${t('reserve_30_min')}`;
     reserveBtn.onclick = showReservationModal;
     actionButtons.appendChild(reserveBtn);
   }
@@ -187,41 +216,47 @@ function showReservationModal() {
     window.location.href = '/login.html';
     return;
   }
-  
+
   if (!selectedStation) return;
-  
+
   if (selectedStation.currentTransaction) {
-    showToast('Station is currently in use', 'error');
+    showToast(t('station_in_use'), 'error');
     return;
   }
-  
+
   let modal = document.getElementById('reservationModal');
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'reservationModal';
     modal.className = 'modal hidden';
-    modal.innerHTML = `
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3>📅 Reserve Charging Slot</h3>
-          <button class="close-btn" onclick="closeReservationModal()">&times;</button>
-        </div>
-        <div class="modal-body">
-          <p style="margin-bottom: 15px; color: #666;">
-            Station: <strong id="reservationStationName">--</strong>
-          </p>
-          <div id="reservationSlots" class="reservation-slots">
-            <p>Loading available slots...</p>
-          </div>
-        </div>
-      </div>
-    `;
     document.body.appendChild(modal);
   }
-  
-  document.getElementById('reservationStationName').textContent = selectedStation.name;
+
+  modal.innerHTML = `
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>${t('reserve_charger')}</h3>
+        <button class="close-btn" onclick="closeReservationModal()">&times;</button>
+      </div>
+      <div class="modal-body" style="text-align:center; padding: 20px;">
+        <div style="font-size: 2.5rem; margin-bottom: 12px;">📅</div>
+        <p style="margin-bottom: 6px; font-weight: 600; font-size: 1.05rem;">
+          ${selectedStation.name}
+        </p>
+        <p style="color: var(--gray-500, #6b7280); margin-bottom: 20px; font-size: 0.9rem;">
+          ${t('reserve_description')}
+        </p>
+        <button class="btn btn-primary" id="reserveNowBtn" onclick="makeReservationNow()" style="width: 100%; padding: 14px;">
+          ${t('reserve_for_30')}
+        </button>
+        <p style="margin-top: 12px; font-size: 0.75rem; color: var(--gray-500, #6b7280);">
+          ${t('one_active_reservation')}
+        </p>
+      </div>
+    </div>
+  `;
+
   modal.classList.remove('hidden');
-  loadAvailableSlots();
 }
 
 function closeReservationModal() {
@@ -229,68 +264,37 @@ function closeReservationModal() {
   if (modal) modal.classList.add('hidden');
 }
 
-async function loadAvailableSlots() {
-  if (!selectedStation) return;
-  
-  const container = document.getElementById('reservationSlots');
-  container.innerHTML = '<p>Loading...</p>';
-  
-  try {
-    const response = await fetch(`/api/reservations/slots/${selectedStation.id}`);
-    const data = await response.json();
-    
-    if (data.slots.length === 0) {
-      container.innerHTML = '<p>No slots available</p>';
-      return;
-    }
-    
-    const upcomingSlots = data.slots.filter(s => s.available).slice(0, 12);
-    
-    if (upcomingSlots.length === 0) {
-      container.innerHTML = '<p>No available slots in next 6 hours</p>';
-      return;
-    }
-    
-    container.innerHTML = upcomingSlots.map(slot => {
-      const date = new Date(slot.time);
-      const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const dateStr = date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
-      return `
-        <button class="slot-btn" onclick="makeReservation('${slot.time}')">
-          <span class="slot-time">${timeStr}</span>
-          <span class="slot-date">${dateStr}</span>
-          <span class="slot-duration">30 min</span>
-        </button>
-      `;
-    }).join('');
-  } catch (error) {
-    container.innerHTML = '<p>Error loading slots</p>';
-  }
-}
-
-async function makeReservation(startTime) {
+async function makeReservationNow() {
   if (!selectedStation || !currentUser) return;
-  
+
+  const btn = document.getElementById('reserveNowBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = t('reserving');
+  }
+
   try {
     const response = await fetch('/api/reservations', {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({
-        chargerId: selectedStation.id,
-        startTime: startTime
-      })
+      body: JSON.stringify({ chargerId: selectedStation.id })
     });
-    
+
     const data = await response.json();
-    
+
     if (response.ok) {
-      showToast('Reservation confirmed!', 'success', '✅');
+      showToast(t('reserved_success'), 'success');
       closeReservationModal();
     } else {
-      showToast(data.error || 'Failed to reserve', 'error');
+      showToast(data.error || t('failed_to_reserve'), 'error');
     }
   } catch (error) {
-    showToast('Network error', 'error');
+    showToast(t('network_error'), 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = t('reserve_for_30');
+    }
   }
 }
 
@@ -323,17 +327,30 @@ function connectWebSocket() {
   
   ws.onmessage = (event) => {
     const data = JSON.parse(event.data);
-    
+
+    // Handle connection phase messages
+    if (data.type === 'connection_phase') {
+      if (selectedStation && data.stationId === selectedStation.id) {
+        connectionPhase = data.phase;
+        updateConnectionPhaseUI(data);
+      }
+      return;
+    }
+
     if (data.type === 'init' || data.type === 'update') {
       stations = data.stations;
       updateMarkers();
       updateHeaderStats();
-      
+
       if (selectedStation) {
         const updated = stations.find(s => s.id === selectedStation.id);
         if (updated) {
           if (selectedStation.currentTransaction && !updated.currentTransaction) {
             showSessionSummary(selectedStation.currentTransaction);
+          }
+          // If connection phase was active but charging started (e.g. after WS reconnect)
+          if (connectionPhase && updated.currentTransaction) {
+            hideConnectionPhaseUI();
           }
           selectedStation = updated;
           updatePanel();
@@ -354,29 +371,12 @@ function connectWebSocket() {
 }
 
 function updateConnectionStatus(online) {
-  const status = document.getElementById('connectionStatus');
-  if (!status) return;
-  
-  const dot = status.querySelector('.dot');
-  const text = status.querySelector('span:last-child');
-  
+  const dot = document.getElementById('connectionDot');
   if (dot) dot.className = `dot ${online ? 'online' : 'offline'}`;
-  if (text) text.textContent = online ? 'Connected' : 'Reconnecting...';
 }
 
 function updateHeaderStats() {
-  const statsBadge = document.getElementById('statsBadge');
-  if (!statsBadge) return;
-  
-  const totalStations = stations.length;
-  const activeStations = stations.filter(s => s.status === 'Charging').length;
-  const availableStations = stations.filter(s => s.status === 'Available' && s.connected).length;
-  
-  if (totalStations === 0) {
-    statsBadge.textContent = 'Loading...';
-  } else {
-    statsBadge.textContent = `${totalStations} Stations • ${activeStations} Active • ${availableStations} Available`;
-  }
+  // Stats are no longer shown in header (decluttered for mobile)
 }
 
 // Update map markers
@@ -472,6 +472,11 @@ function updatePanel() {
     }
     stationAddress.textContent = addressText;
   }
+  const stationPrice = document.getElementById('stationPrice');
+  if (stationPrice) {
+    const price = selectedStation.pricePerKwh || DEFAULT_COST_PER_KWH;
+    stationPrice.textContent = typeof formatPricePerKwh === 'function' ? formatPricePerKwh(price) : `€${price.toFixed(2)}/kWh`;
+  }
   
   // Determine connection status
   const isCitrineConnected = citrineStationStatus[selectedStation.id]?.connected;
@@ -480,27 +485,27 @@ function updatePanel() {
   const isConnected = selectedStation.connected || isCitrineConnected || hasRecentHeartbeat;
   
   // Update status badge
-  let status = selectedStation.status || 'Offline';
+  let status = selectedStation.status || t('offline');
   
   if (isConnected) {
     switch (selectedStation.status) {
       case 'Preparing':
-        status = '🔌 Ready - Plug Connected';
+        status = `🔌 ${t('status_ready_plug')}`;
         break;
       case 'Available':
-        status = '✓ Available';
+        status = `✓ ${t('available')}`;
         break;
       case 'Charging':
-        status = '⚡ Charging';
+        status = `⚡ ${t('charging')}`;
         break;
       case 'Finishing':
-        status = 'Finishing...';
+        status = t('status_finishing');
         break;
       case 'Suspended':
-        status = '⏸ Paused';
+        status = `⏸ ${t('status_paused')}`;
         break;
       case 'Faulted':
-        status = '⚠️ Error';
+        status = `⚠️ ${t('status_error')}`;
         break;
       default:
         status = selectedStation.status || 'Unknown';
@@ -509,15 +514,15 @@ function updatePanel() {
     if (selectedStation.lastHeartbeat) {
       const secondsAgo = Math.floor((Date.now() - selectedStation.lastHeartbeat) / 1000);
       if (secondsAgo < 15) {
-        status += ' • Active';
+        status += ` • ${t('status_active')}`;
       } else if (secondsAgo < 60) {
         status += ` • ${secondsAgo}s ago`;
       }
     }
   } else {
-    status = 'Offline';
+    status = t('offline');
   }
-  
+
   if (statusBadge) {
     statusBadge.textContent = status;
     const statusClass = isConnected ? (selectedStation.status || 'available').toLowerCase() : 'offline';
@@ -531,6 +536,10 @@ function updatePanel() {
   const reserveBtn = document.getElementById('reserveBtn');
   
   if (selectedStation.currentTransaction) {
+    // If connection phase overlay is still showing, hide it now that charging is active
+    if (connectionPhase) {
+      hideConnectionPhaseUI();
+    }
     if (chargingDisplay) chargingDisplay.classList.remove('hidden');
     if (startBtn) startBtn.classList.add('hidden');
     if (stopBtn) stopBtn.classList.remove('hidden');
@@ -561,7 +570,9 @@ function updatePanel() {
     if (energyEl) energyEl.textContent = Math.max(0, energy).toFixed(2);
     
     const costEl = document.getElementById('costAmount');
-    if (costEl) costEl.textContent = `€${(Math.max(0, energy) * COST_PER_KWH).toFixed(2)}`;
+    const pricePerKwh = (selectedStation && selectedStation.pricePerKwh) || DEFAULT_COST_PER_KWH;
+    const costEur = Math.max(0, energy) * pricePerKwh;
+    if (costEl) costEl.textContent = typeof formatPrice === 'function' ? formatPrice(costEur) : `€${costEur.toFixed(2)}`;
     
     updateBatteryIndicator(energy, soc);
     
@@ -604,7 +615,7 @@ function updatePanel() {
       if (startBtn) {
         startBtn.classList.remove('hidden');
         startBtn.disabled = true;
-        startBtn.textContent = '⏳ Not Available';
+        startBtn.textContent = `⏳ ${t('not_available')}`;
       }
       if (reserveBtn) reserveBtn.style.display = 'none';
     } else {
@@ -676,7 +687,9 @@ function closePanel() {
   const panel = document.getElementById('stationPanel');
   if (panel) panel.classList.remove('open');
   selectedStation = null;
-  
+  connectionPhase = null;
+  hideConnectionPhaseUI();
+
   if (chargingTimer) {
     clearInterval(chargingTimer);
     chargingTimer = null;
@@ -763,14 +776,14 @@ async function processPayment() {
     const result = await response.json();
     
     if (result.success) {
-      showToast('Payment authorized', 'success', '✅');
+      showToast(t('payment_authorized'), 'success', '✅');
       closePayment();
       await startCharging(result.token);
     } else {
-      showToast(result.message || 'Payment failed', 'error', '❌');
+      showToast(result.message || t('payment_error'), 'error', '❌');
     }
   } catch (error) {
-    showToast('Payment error', 'error', '❌');
+    showToast(t('payment_error'), 'error', '❌');
     console.error(error);
   } finally {
     if (payBtn) {
@@ -783,43 +796,177 @@ async function processPayment() {
 // Charging control
 async function startCharging(paymentToken) {
   if (!selectedStation) return;
-  
+
   const startBtn = document.getElementById('startBtn');
   if (startBtn) {
     startBtn.disabled = true;
-    startBtn.textContent = '⚡ Starting...';
+    startBtn.classList.add('hidden');
   }
-  
+
   sessionData = {
     startBattery: INITIAL_BATTERY,
     startTime: new Date(),
     maxPower: 0
   };
-  
+
   try {
-    const response = await fetch(`/api/stations/${selectedStation.id}/start`, {
+    const response = await fetch(`/api/stations/${encodeURIComponent(selectedStation.id)}/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ idTag: paymentToken })
     });
-    
+
     const result = await response.json();
-    
+
     if (response.ok) {
-      showToast('Charging started successfully', 'success', '⚡');
-      if (navigator.vibrate) navigator.vibrate(200);
+      if (result.status === 'connecting') {
+        // Show connection phase UI — WebSocket will drive subsequent transitions
+        showConnectionPhaseUI(result);
+      } else if (result.status === 'started') {
+        // Direct start (already-simulated station)
+        showToast(t('charging_started'), 'success');
+        if (navigator.vibrate) navigator.vibrate(200);
+      }
     } else {
-      showToast(result.error || 'Failed to start', 'error', '❌');
+      showToast(result.error || t('start_failed'), 'error');
+      if (startBtn) {
+        startBtn.disabled = false;
+        startBtn.classList.remove('hidden');
+      }
     }
   } catch (error) {
-    showToast('Connection error', 'error', '❌');
+    showToast(t('network_error'), 'error');
     console.error(error);
-  } finally {
     if (startBtn) {
       startBtn.disabled = false;
-      startBtn.textContent = '⚡ Start Charging';
+      startBtn.classList.remove('hidden');
     }
   }
+}
+
+// Connection phase UI functions
+function showConnectionPhaseUI(result) {
+  const overlay = document.getElementById('connectionPhaseOverlay');
+  const chargingDisplay = document.getElementById('chargingDisplay');
+  if (!overlay) return;
+
+  if (chargingDisplay) chargingDisplay.classList.add('hidden');
+  overlay.classList.remove('hidden');
+  overlay.classList.remove('fade-out');
+
+  connectionPhase = 'awaiting_car';
+  const waitTime = result.isDemoCharger ? 20 : 30;
+
+  overlay.innerHTML = `
+    <div class="connection-phase-content">
+      <div class="car-plug-animation">
+        <div class="car-icon">
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 17h14"/>
+            <path d="M6 17V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v10"/>
+            <rect x="3" y="14" width="18" height="3" rx="1"/>
+            <circle cx="7" cy="19" r="1.5"/>
+            <circle cx="17" cy="19" r="1.5"/>
+            <path d="M12 8v3"/>
+            <path d="M10.5 9.5h3"/>
+          </svg>
+        </div>
+        <div class="plug-connector-line">
+          <div class="plug-pulse"></div>
+        </div>
+        <div class="charger-icon">&#9889;</div>
+      </div>
+      <h3 class="connection-phase-title">${t('awaiting_car_connection')}</h3>
+      <p class="connection-phase-subtitle">${t('please_plug_in')}</p>
+      <div class="connection-progress">
+        <div class="connection-progress-bar" style="animation-duration: ${waitTime}s"></div>
+      </div>
+    </div>
+  `;
+
+  overlay._countdownInterval = null;
+}
+
+function updateConnectionPhaseUI(data) {
+  const overlay = document.getElementById('connectionPhaseOverlay');
+  if (!overlay || overlay.classList.contains('hidden')) return;
+
+  const title = overlay.querySelector('.connection-phase-title');
+  const subtitle = overlay.querySelector('.connection-phase-subtitle');
+
+  switch (data.phase) {
+    case 'awaiting_car':
+      // Already showing initial state
+      break;
+
+    case 'started':
+      // Demo charger succeeded - show success
+      if (overlay._countdownInterval) clearInterval(overlay._countdownInterval);
+      if (title) title.textContent = t('charging_started');
+      if (subtitle) subtitle.textContent = t('vehicle_now_charging');
+      // Replace animation with success checkmark
+      const animEl = overlay.querySelector('.car-plug-animation');
+      if (animEl) {
+        animEl.outerHTML = `
+          <div class="checkmark-circle success">
+            <div class="checkmark">&#9889;</div>
+          </div>
+        `;
+      }
+      const progressBar = overlay.querySelector('.connection-progress');
+      if (progressBar) progressBar.style.display = 'none';
+      if (navigator.vibrate) navigator.vibrate(200);
+      showToast(t('charging_started'), 'success');
+      // Auto-hide after 1.5s
+      setTimeout(() => hideConnectionPhaseUI(), 1500);
+      break;
+
+    case 'timeout':
+      // Non-demo charger timed out - show timeout, then reset
+      if (overlay._countdownInterval) clearInterval(overlay._countdownInterval);
+      if (title) title.textContent = t('connection_timed_out');
+      if (subtitle) subtitle.textContent = t('no_vehicle_detected');
+      // Replace animation with timeout icon
+      const animEl2 = overlay.querySelector('.car-plug-animation');
+      if (animEl2) {
+        animEl2.outerHTML = `
+          <div class="timeout-circle">
+            <div class="timeout-icon">&#9203;</div>
+          </div>
+        `;
+      }
+      const progressBar2 = overlay.querySelector('.connection-progress');
+      if (progressBar2) progressBar2.style.display = 'none';
+      if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+      // Auto-hide after 3s, restore Start button
+      setTimeout(() => {
+        hideConnectionPhaseUI();
+        const startBtn = document.getElementById('startBtn');
+        if (startBtn) {
+          startBtn.disabled = false;
+          startBtn.classList.remove('hidden');
+          startBtn.innerHTML = `&#9889; ${t('start_charging')}`;
+        }
+      }, 3000);
+      break;
+  }
+}
+
+function hideConnectionPhaseUI() {
+  const overlay = document.getElementById('connectionPhaseOverlay');
+  if (overlay && !overlay.classList.contains('hidden')) {
+    if (overlay._countdownInterval) {
+      clearInterval(overlay._countdownInterval);
+      overlay._countdownInterval = null;
+    }
+    overlay.classList.add('fade-out');
+    setTimeout(() => {
+      overlay.classList.add('hidden');
+      overlay.classList.remove('fade-out');
+      overlay.innerHTML = '';
+    }, 500);
+  }
+  connectionPhase = null;
 }
 
 async function stopCharging() {
@@ -828,11 +975,11 @@ async function stopCharging() {
   const stopBtn = document.getElementById('stopBtn');
   if (stopBtn) {
     stopBtn.disabled = true;
-    stopBtn.textContent = '⏹ Stopping...';
+    stopBtn.textContent = `⏹ ${t('stopping')}`;
   }
   
   try {
-    const response = await fetch(`/api/stations/${selectedStation.id}/stop`, {
+    const response = await fetch(`/api/stations/${encodeURIComponent(selectedStation.id)}/stop`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     });
@@ -840,18 +987,18 @@ async function stopCharging() {
     const result = await response.json();
     
     if (response.ok) {
-      showToast('Charging stopped', 'success', '✅');
+      showToast(t('charging_stopped'), 'success', '✅');
       if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
     } else {
-      showToast(result.error || 'Failed to stop', 'error', '❌');
+      showToast(result.error || t('failed_to_stop'), 'error', '❌');
     }
   } catch (error) {
-    showToast('Connection error', 'error', '❌');
+    showToast(t('connection_error'), 'error', '❌');
     console.error(error);
   } finally {
     if (stopBtn) {
       stopBtn.disabled = false;
-      stopBtn.textContent = '⏹ Stop Charging';
+      stopBtn.textContent = `⏹ ${t('stop_charging')}`;
     }
   }
 }
@@ -861,7 +1008,8 @@ function showSessionSummary(transaction) {
   if (!transaction) return;
   
   const energy = parseFloat(transaction.energy) || 0;
-  const cost = energy * COST_PER_KWH;
+  const pricePerKwh = (selectedStation && selectedStation.pricePerKwh) || DEFAULT_COST_PER_KWH;
+  const cost = energy * pricePerKwh;
   
   const startTime = new Date(transaction.startTime);
   const endTime = new Date();
@@ -882,7 +1030,7 @@ function showSessionSummary(transaction) {
   if (summaryEnergy) summaryEnergy.textContent = `${energy.toFixed(2)} kWh`;
   if (summaryDuration) summaryDuration.textContent = durationStr;
   if (summaryAvgPower) summaryAvgPower.textContent = `${avgPower} kW`;
-  if (summaryCost) summaryCost.textContent = `€${cost.toFixed(2)}`;
+  if (summaryCost) summaryCost.textContent = typeof formatPrice === 'function' ? formatPrice(cost) : `€${cost.toFixed(2)}`;
   
   const summaryModal = document.getElementById('summaryModal');
   if (summaryModal) summaryModal.classList.remove('hidden');
@@ -1064,7 +1212,7 @@ async function fetchCitrineStationStatus(stationId) {
   if (!citrineStatus.available) return;
   
   try {
-    const response = await fetch(`/api/stations/${stationId}/citrine-status`, {
+    const response = await fetch(`/api/stations/${encodeURIComponent(stationId)}/citrine-status`, {
       headers: authToken ? getAuthHeaders() : { 'Content-Type': 'application/json' }
     });
     
@@ -1127,11 +1275,11 @@ function initSearch() {
     );
 
     if (matches.length === 0) {
-      results.innerHTML = '<div style="padding:14px;text-align:center;color:#999;font-size:0.85rem">No stations found</div>';
+      results.innerHTML = `<div style="padding:14px;text-align:center;color:#999;font-size:0.85rem">${t('no_stations_found')}</div>`;
     } else {
       results.innerHTML = matches.map(s => {
         const isOnline = s.connected || (s.lastHeartbeat && (Date.now() - s.lastHeartbeat) < 120000);
-        const statusText = s.currentTransaction ? 'Charging' : isOnline ? 'Available' : 'Offline';
+        const statusText = s.currentTransaction ? t('charging') : isOnline ? t('available') : t('offline');
         const statusColor = s.currentTransaction ? '#ef6c00;background:#fff3e0' : isOnline ? '#2e7d32;background:#e8f5e9' : '#666;background:#f5f5f5';
         return `<div class="search-result-item" onclick="searchSelectStation('${s.id}')">
           <div>
@@ -1159,9 +1307,25 @@ function searchSelectStation(id) {
   selectStation(id);
 }
 
-// Register service worker for PWA
+// Register service worker for PWA with auto-update detection
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => {
-    // Service worker registration failed - that's okay for demo
+  navigator.serviceWorker.register('/sw.js').then(reg => {
+    reg.addEventListener('updatefound', () => {
+      const newWorker = reg.installing;
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'activated') {
+          window.location.reload();
+        }
+      });
+    });
+  }).catch(() => {});
+
+  // Reload when a new service worker takes control
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
   });
 }

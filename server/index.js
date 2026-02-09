@@ -1,3 +1,5 @@
+try { require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') }); } catch(e) {}
+
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -15,10 +17,11 @@ const reservationRoutes = require('./routes/reservations');
 const walletRoutes = require('./routes/wallet');
 const notificationRoutes = require('./routes/notifications');
 const userRoutes = require('./routes/users');
-const { optionalAuth } = require('./auth');
+const { optionalAuth, authenticateToken, requireRole } = require('./auth');
 const citrineClient = require('./citrine-client');
 const { notifications } = require('./services');
 const CitrinePoller = require('./citrine-poller');
+const simulator = require('./simulator');
 
 // Initialize services
 notifications.init();
@@ -43,7 +46,45 @@ const ocppWss = new WebSocket.Server({
 const browserWss = new WebSocket.Server({ noServer: true });
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../public')));
+
+// Auto-versioning: generate unique version on each server start for cache-busting
+const APP_VERSION = Date.now().toString(36);
+const fs = require('fs');
+console.log(`[Cache] APP_VERSION: ${APP_VERSION}`);
+
+// Serve sw.js dynamically with version injected into cache name
+app.get('/sw.js', (req, res) => {
+  const swPath = path.join(__dirname, '../public/sw.js');
+  let content = fs.readFileSync(swPath, 'utf8');
+  content = content.replace(/__APP_VERSION__/g, APP_VERSION);
+  res.set('Content-Type', 'application/javascript');
+  res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.send(content);
+});
+
+// Inject version query params into HTML files for cache-busting
+app.get(/\.html$|^\/$/, (req, res, next) => {
+  let filePath;
+  if (req.path === '/') {
+    filePath = path.join(__dirname, '../public/index.html');
+  } else {
+    filePath = path.join(__dirname, '../public', req.path);
+  }
+
+  fs.readFile(filePath, 'utf8', (err, content) => {
+    if (err) return next(); // fall through to static
+    // Add ?v=VERSION to local CSS and JS references
+    content = content.replace(
+      /(?:href|src)="(\/[^"]*\.(?:css|js))(?:\?[^"]*)?"/g,
+      (match, assetPath) => match.replace(assetPath, `${assetPath}?v=${APP_VERSION}`)
+    );
+    res.set('Content-Type', 'text/html');
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.send(content);
+  });
+});
+
+app.use(express.static(path.join(__dirname, '../public'), { maxAge: '1h' }));
 
 // New auth, verification, and CitrineOS routes
 app.use('/api/auth', authRoutes);
@@ -83,43 +124,110 @@ app.get('/api/stations/:id', (req, res) => {
   }
 });
 
+// Demo strategy constants
+const DEMO_MODE = process.env.DEMO_MODE === 'true';
+const DEMO_CHARGER_ID = '30004496';
+const DEMO_AWAIT_SECONDS = 20;
+const DEFAULT_AWAIT_SECONDS = 30;
+
+// Prevent double-tap on start
+const startingStations = new Set();
+// Track pending connection timeouts for cleanup
+const pendingConnectionTimeouts = new Map();
+
+// Broadcast connection phase updates to browser clients
+function broadcastConnectionPhase(stationId, phase) {
+  const payload = JSON.stringify({
+    type: 'connection_phase',
+    stationId,
+    phase,
+    timestamp: Date.now()
+  });
+  browserWss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(payload);
+    }
+  });
+}
+
 app.post('/api/stations/:id/start', optionalAuth, async (req, res) => {
   const { id } = req.params;
   const { idTag } = req.body;
-  
+  console.log(`[Start] Request for ${id}, user: ${req.user?.id || 'anon'}`);
+
   const station = store.getStation(id);
   if (!station) {
     return res.status(404).json({ error: 'Station not found' });
   }
-  
+
   if (!station.connected) {
     return res.status(400).json({ error: 'Charger is offline' });
   }
-  
-  // Use authenticated user ID if available, otherwise use provided idTag or demo
+
+  if (startingStations.has(id)) {
+    return res.status(429).json({ error: 'Start already in progress' });
+  }
+
   const effectiveIdTag = req.user?.id || idTag || 'DEMO-TAG-001';
-  
-  // If CitrineOS mode is enabled, use CitrineOS API
-  if (USE_CITRINE_POLLING) {
-    try {
-      const result = await citrineClient.remoteStartTransaction(id, 1, effectiveIdTag);
-      res.json({ status: 'requested', message: 'Start command sent via CitrineOS', result });
-    } catch (error) {
-      console.error('[Start] CitrineOS error:', error);
-      res.status(500).json({ error: 'Failed to send command via CitrineOS' });
-    }
+
+  if (id === DEMO_CHARGER_ID) {
+    // DEMO CHARGER: 20s "awaiting car connection" then start simulation
+    console.log(`[Start] Demo charger ${id}: ${DEMO_AWAIT_SECONDS}s await`);
+    startingStations.add(id);
+    res.json({ status: 'connecting', isDemoCharger: true });
+    broadcastConnectionPhase(id, 'awaiting_car');
+
+    const timeout = setTimeout(() => {
+      pendingConnectionTimeouts.delete(id);
+      const fresh = store.getStation(id);
+
+      console.log(`[Start] Demo await complete for ${id}, connected: ${fresh?.connected}, src: ${fresh?.connectionSource}`);
+
+      if (!fresh || !fresh.connected) {
+        console.error(`[Start] Station ${id} offline after await`);
+        broadcastConnectionPhase(id, 'timeout');
+        startingStations.delete(id);
+        return;
+      }
+
+      if (fresh.connectionSource !== 'simulation') {
+        const cr = simulator.simulateConnect(id);
+        if (cr.error) {
+          console.error(`[Start] simulateConnect failed for ${id}: ${cr.error}`);
+          broadcastConnectionPhase(id, 'timeout');
+          startingStations.delete(id);
+          return;
+        }
+      }
+
+      const sr = simulator.simulateStart(id, { idTag: effectiveIdTag });
+      if (sr.error) {
+        console.error(`[Start] simulateStart failed for ${id}: ${sr.error}`);
+        broadcastConnectionPhase(id, 'timeout');
+        startingStations.delete(id);
+        return;
+      }
+
+      console.log(`[Start] Charging started on ${id}, txId: ${sr.transactionId}`);
+      broadcastConnectionPhase(id, 'started');
+      broadcastUpdate();
+      startingStations.delete(id);
+    }, DEMO_AWAIT_SECONDS * 1000);
+
+    pendingConnectionTimeouts.set(id, timeout);
   } else {
-    // Direct OCPP mode
-    const success = sendToCharger(id, 'RemoteStartTransaction', {
-      connectorId: 1,
-      idTag: effectiveIdTag
-    });
-    
-    if (success) {
-      res.json({ status: 'requested', message: 'Start command sent to charger' });
-    } else {
-      res.status(500).json({ error: 'Failed to send command' });
-    }
+    // ALL OTHER CHARGERS: 30s "awaiting car connection" then timeout
+    startingStations.add(id);
+    res.json({ status: 'connecting', isDemoCharger: false });
+    broadcastConnectionPhase(id, 'awaiting_car');
+
+    const timeout = setTimeout(() => {
+      pendingConnectionTimeouts.delete(id);
+      broadcastConnectionPhase(id, 'timeout');
+      startingStations.delete(id);
+    }, DEFAULT_AWAIT_SECONDS * 1000);
+
+    pendingConnectionTimeouts.set(id, timeout);
   }
 });
 
@@ -134,7 +242,15 @@ app.post('/api/stations/:id/stop', optionalAuth, async (req, res) => {
   if (!station.currentTransaction) {
     return res.status(400).json({ error: 'No active transaction' });
   }
-  
+
+  // Simulated station: route to simulator
+  if (station.connectionSource === 'simulation') {
+    const result = simulator.simulateStop(id);
+    if (result.error) return res.status(result.status || 400).json({ error: result.error });
+    broadcastUpdate();
+    return res.json({ status: 'stopped', message: 'Charging stopped', session: result.session });
+  }
+
   // If CitrineOS mode is enabled, use CitrineOS API
   if (USE_CITRINE_POLLING) {
     try {
@@ -182,14 +298,14 @@ app.post('/api/payment/process', (req, res) => {
 });
 
 // Admin API endpoints
-app.post('/api/stations', (req, res) => {
-  const { id, name, power, lat, lng, address } = req.body;
+app.post('/api/stations', authenticateToken, requireRole('admin'), (req, res) => {
+  const { id, name, power, pricePerKwh, lat, lng, address } = req.body;
   
   if (!id) {
     return res.status(400).json({ error: 'Station ID is required' });
   }
   
-  const station = store.createStation({ id, name, power, lat, lng, address });
+  const station = store.createStation({ id, name, power, pricePerKwh, lat, lng, address });
   
   if (!station) {
     return res.status(409).json({ error: 'Station with this ID already exists' });
@@ -199,13 +315,23 @@ app.post('/api/stations', (req, res) => {
   res.status(201).json(station);
 });
 
-app.put('/api/stations/:id', (req, res) => {
+app.put('/api/stations/:id', authenticateToken, requireRole('admin'), (req, res) => {
   const { id } = req.params;
-  const { name, power, lat, lng, address, pricePerKwh } = req.body;
+  const { name, power, lat, lng, address, pricePerKwh, isHardware, newId } = req.body;
 
   const station = store.getStation(id);
   if (!station) {
     return res.status(404).json({ error: 'Station not found' });
+  }
+
+  // Handle ID change
+  let targetId = id;
+  if (newId && newId !== id) {
+    const result = store.changeStationId(id, newId);
+    if (!result) {
+      return res.status(409).json({ error: 'New ID already exists or station not found' });
+    }
+    targetId = newId;
   }
 
   const updates = {};
@@ -215,29 +341,67 @@ app.put('/api/stations/:id', (req, res) => {
   if (lng !== undefined) updates.lng = lng;
   if (address !== undefined) updates.address = address;
   if (pricePerKwh !== undefined) updates.pricePerKwh = pricePerKwh;
-  
-  const updatedStation = store.updateStation(id, updates);
+  if (isHardware !== undefined) updates.isHardware = isHardware;
+
+  const updatedStation = store.updateStation(targetId, updates);
   broadcastUpdate();
   res.json(updatedStation);
 });
 
-app.delete('/api/stations/:id', (req, res) => {
+app.delete('/api/stations/:id', authenticateToken, requireRole('admin'), (req, res) => {
   const { id } = req.params;
-  
-  const success = store.deleteStation(id);
-  
-  if (!success) {
-    const station = store.getStation(id);
-    if (!station) {
-      return res.status(404).json({ error: 'Station not found' });
-    }
-    if (station.connected) {
-      return res.status(400).json({ error: 'Cannot delete a connected charger' });
-    }
+
+  const station = store.getStation(id);
+  if (!station) {
+    return res.status(404).json({ error: 'Station not found' });
   }
-  
+
+  // Disconnect simulation first if active
+  if (station.connectionSource === 'simulation') {
+    simulator.simulateDisconnect(id);
+  }
+
+  const success = store.deleteStation(id, true);
+  if (!success) {
+    return res.status(500).json({ error: 'Failed to delete station' });
+  }
+
   broadcastUpdate();
   res.json({ success: true, message: 'Station deleted' });
+});
+
+// === Simulation Routes (admin only) ===
+app.post('/api/simulate/connect/:id', authenticateToken, requireRole('admin'), (req, res) => {
+  const result = simulator.simulateConnect(req.params.id);
+  if (result.error) return res.status(result.status || 400).json({ error: result.error });
+  res.json(result);
+});
+
+app.post('/api/simulate/start/:id', authenticateToken, requireRole('admin'), (req, res) => {
+  const result = simulator.simulateStart(req.params.id, req.body);
+  if (result.error) return res.status(result.status || 400).json({ error: result.error });
+  res.json(result);
+});
+
+app.post('/api/simulate/stop/:id', authenticateToken, requireRole('admin'), (req, res) => {
+  const result = simulator.simulateStop(req.params.id);
+  if (result.error) return res.status(result.status || 400).json({ error: result.error });
+  res.json(result);
+});
+
+app.post('/api/simulate/disconnect/:id', authenticateToken, requireRole('admin'), (req, res) => {
+  const result = simulator.simulateDisconnect(req.params.id);
+  if (result.error) return res.status(result.status || 400).json({ error: result.error });
+  res.json(result);
+});
+
+app.post('/api/simulate/demo-setup', authenticateToken, requireRole('admin'), (req, res) => {
+  const results = simulator.setupDemoScenario();
+  res.json(results);
+});
+
+app.get('/api/simulate/status', authenticateToken, requireRole('admin'), (req, res) => {
+  res.json(simulator.getStatus());
 });
 
 // OCPP Command endpoints
@@ -430,15 +594,17 @@ server.on('upgrade', (request, socket, head) => {
 });
 
 // Timeout monitor - check for offline chargers every 30 seconds
+// Only applies to direct OCPP connections, not CitrineOS-polled or simulated stations
 setInterval(() => {
   const stations = store.getStations();
   const now = Date.now();
   const TIMEOUT_MS = 40000; // 40 seconds (allowing for 4 missed 10-second heartbeats)
-  
+
   stations.forEach(station => {
-    if (station.connected && station.lastHeartbeat) {
+    // Only timeout direct OCPP connections - skip poller/simulation managed stations
+    if (station.connected && station.lastHeartbeat && station.connectionSource === 'ocpp') {
       const timeSinceLastHeartbeat = now - station.lastHeartbeat;
-      
+
       if (timeSinceLastHeartbeat > TIMEOUT_MS) {
         console.log(`[OCPP] Charger ${station.id} timed out (${Math.floor(timeSinceLastHeartbeat / 1000)}s since last heartbeat)`);
         store.updateStation(station.id, {
@@ -553,43 +719,32 @@ module.exports = { broadcastUpdate };
 // Set broadcast function for CitrineOS webhook handler
 citrineRoutes.setBroadcastUpdate(broadcastUpdate);
 
+// Initialize simulator with broadcast function
+simulator.init(broadcastUpdate);
+
 // CitrineOS Polling Service
 const USE_CITRINE_POLLING = process.env.USE_CITRINEOS === 'true';
 const citrinePoller = new CitrinePoller(broadcastUpdate);
 
-// Demo/Simulation Mode - Set DEMO_MODE=true to simulate chargers without real hardware
-// WARNING: This makes chargers appear connected when they're not actually communicating via OCPP
-const DEMO_MODE = process.env.DEMO_MODE === 'true';
-
-if (DEMO_MODE) {
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║  ⚠️  DEMO MODE ENABLED - Chargers will appear online       ║');
-  console.log('║     No real OCPP connection required                       ║');
-  console.log('╚════════════════════════════════════════════════════════════╝');
-  
-  setTimeout(() => {
-    const stations = store.getStations();
-    for (const station of stations) {
-      store.updateStation(station.id, {
-        connected: true,
-        status: 'Available',
-        lastHeartbeat: Date.now(),
-        demoMode: true,
-        connectionSource: 'demo'
-      });
-    }
-    broadcastUpdate();
-    console.log('[DEMO] All stations marked as simulated/online');
-  }, 3000);
-} else if (USE_CITRINE_POLLING) {
-  // Start polling CitrineOS for real status
+// Auto demo setup: connect all stations via simulation on startup
+// CitrineOS poller runs alongside but skips simulation-connected stations
+if (USE_CITRINE_POLLING) {
   setTimeout(() => {
     citrinePoller.start();
+    // Auto-setup demo after poller's first cycle completes
+    setTimeout(() => {
+      console.log('[Demo] Auto-connecting all stations via simulation...');
+      const results = simulator.setupDemoScenario();
+      console.log('[Demo] Setup complete:', results.results.map(r => `${r.id}: ${r.action}`).join(', '));
+      broadcastUpdate();
+    }, 5000);
   }, 3000);
 } else {
-  // Fallback: Log that polling is disabled
+  // No poller - just run demo setup directly
   setTimeout(() => {
-    console.log('[CitrineOS] Polling disabled (set USE_CITRINEOS=true to enable)');
+    console.log('[Demo] Auto-connecting all stations via simulation...');
+    simulator.setupDemoScenario();
+    broadcastUpdate();
   }, 3000);
 }
 

@@ -10,7 +10,7 @@ echo "╚═══════════════════════�
 echo ""
 
 # Configuration
-DOMAIN="staging.elink.mk"
+DOMAIN="app.elink.mk"
 APP_DIR="/opt/elink-staging"
 USER="elink"
 

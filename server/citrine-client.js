@@ -85,88 +85,68 @@ class CitrineOSClient {
     return response.data;
   }
 
-  // Remote Commands
+  // Remote Commands (OCPP 1.6 via CitrineOS REST API)
+  // URL pattern: POST /ocpp/1.6/{module}/{action}?identifier={stationId}&tenantId=1
 
   async remoteStartTransaction(stationId, connectorId = 1, idTag) {
-    // Try CitrineOS API first
-    try {
-      const payload = {
-        connectorId,
-        idTag: idTag || 'ANONYMOUS'
-      };
+    const payload = {
+      connectorId,
+      idTag: idTag || 'ANONYMOUS'
+    };
 
-      const response = await this.client.post(
-        `/api/v1/charging-stations/${stationId}/remote-start`,
-        payload
-      );
-      return response.data;
-    } catch (error) {
-      if (error.response?.status === 404) {
-        // CitrineOS doesn't have this endpoint in current config
-        // For MVP: Simulate success and trigger via WebSocket/OCPP direct
-        console.log(`[CitrineOS] RemoteStart not available via REST, using mock for ${stationId}`);
-        return { 
-          success: true, 
-          message: 'Command queued (MVP mode - CitrineOS REST API not available)',
-          stationId,
-          connectorId,
-          idTag
-        };
-      }
-      throw error;
-    }
+    console.log(`[CitrineOS] RemoteStartTransaction for ${stationId}, connector ${connectorId}, idTag ${payload.idTag}`);
+    const response = await this.client.post(
+      `/ocpp/1.6/evdriver/remoteStartTransaction`,
+      payload,
+      { params: { identifier: stationId, tenantId: 1 } }
+    );
+    return response.data;
   }
 
   async remoteStopTransaction(stationId, transactionId) {
-    try {
-      const payload = { transactionId };
+    const payload = { transactionId: Number(transactionId) };
 
-      const response = await this.client.post(
-        `/api/v1/charging-stations/${stationId}/remote-stop`,
-        payload
-      );
-      return response.data;
-    } catch (error) {
-      if (error.response?.status === 404) {
-        console.log(`[CitrineOS] RemoteStop not available via REST, using mock for ${stationId}`);
-        return { 
-          success: true, 
-          message: 'Command queued (MVP mode - CitrineOS REST API not available)',
-          stationId,
-          transactionId
-        };
-      }
-      throw error;
-    }
+    console.log(`[CitrineOS] RemoteStopTransaction for ${stationId}, txId ${transactionId}`);
+    const response = await this.client.post(
+      `/ocpp/1.6/evdriver/remoteStopTransaction`,
+      payload,
+      { params: { identifier: stationId, tenantId: 1 } }
+    );
+    return response.data;
   }
 
   async reset(stationId, type = 'Soft') {
     const response = await this.client.post(
-      `/api/v1/charging-stations/${stationId}/reset`,
-      { type }
+      `/ocpp/1.6/configuration/reset`,
+      { type },
+      { params: { identifier: stationId, tenantId: 1 } }
     );
     return response.data;
   }
 
   async unlockConnector(stationId, connectorId = 1) {
     const response = await this.client.post(
-      `/api/v1/charging-stations/${stationId}/unlock-connector`,
-      { connectorId }
+      `/ocpp/1.6/evdriver/unlockConnector`,
+      { connectorId },
+      { params: { identifier: stationId, tenantId: 1 } }
     );
     return response.data;
   }
 
   async getConfiguration(stationId) {
-    const response = await this.client.get(
-      `/api/v1/charging-stations/${stationId}/configuration`
+    const response = await this.client.post(
+      `/ocpp/1.6/configuration/getConfiguration`,
+      {},
+      { params: { identifier: stationId, tenantId: 1 } }
     );
     return response.data;
   }
 
   async changeConfiguration(stationId, key, value) {
     const response = await this.client.post(
-      `/api/v1/charging-stations/${stationId}/configuration`,
-      { key, value }
+      `/ocpp/1.6/configuration/changeConfiguration`,
+      { key, value },
+      { params: { identifier: stationId, tenantId: 1 } }
     );
     return response.data;
   }
@@ -174,38 +154,30 @@ class CitrineOSClient {
   // Transaction Management
 
   async getTransaction(transactionId) {
-    const response = await this.client.get(`/api/v1/transactions/${transactionId}`);
-    return response.data;
-  }
-
-  async listTransactions(params = {}) {
-    const query = new URLSearchParams(params).toString();
-    const response = await this.client.get(`/api/v1/transactions?${query}`);
+    const response = await this.client.get(`/data/transactions/transaction`, {
+      params: { transactionId, tenantId: 1 }
+    });
     return response.data;
   }
 
   async getActiveTransactions(stationId) {
-    try {
-      const response = await this.client.get(
-        `/api/v1/charging-stations/${stationId}/transactions/active`
-      );
-      return response.data;
-    } catch (error) {
-      if (error.response?.status === 404) {
-        // Endpoint not available in this CitrineOS config
-        return [];
-      }
-      throw error;
-    }
+    // CitrineOS doesn't support querying transactions by stationId
+    // Active transactions are tracked via OCPP messages (StartTransaction/StopTransaction)
+    // handled by ocpp-handler.js and citrine webhook
+    return [];
   }
 
-  // Meter Values
+  // Meter Values (via variable attributes)
 
-  async getMeterValues(transactionId) {
-    const response = await this.client.get(
-      `/api/v1/transactions/${transactionId}/meter-values`
-    );
-    return response.data;
+  async getMeterValues(stationId) {
+    try {
+      const response = await this.client.get(`/data/monitoring/variableAttribute`, {
+        params: { stationId, tenantId: 1 }
+      });
+      return response.data;
+    } catch (error) {
+      return [];
+    }
   }
 
   // Status

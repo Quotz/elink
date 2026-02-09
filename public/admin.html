@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#7CB342">
   <title>Admin Panel - eLink</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -15,16 +15,46 @@
       color: #333;
     }
 
+    .admin-logo-bar {
+      background: white;
+      padding: 10px 20px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
     .admin-header {
       background: linear-gradient(135deg, #7CB342, #689F38);
       color: white;
-      padding: 20px;
+      padding: 14px 20px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
     }
 
     .admin-header h1 {
-      font-size: 24px;
-      margin-bottom: 15px;
+      font-size: 22px;
+      margin: 0;
+    }
+
+    .admin-logos {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .admin-logos img {
+      height: 32px;
+      width: auto;
+    }
+    .admin-logos .logo-divider {
+      width: 1px;
+      height: 22px;
+      background: #d1d5db;
+      flex-shrink: 0;
+    }
+    .admin-logos .logo-inova {
+      height: 26px;
     }
 
     .header-actions {
@@ -317,24 +347,141 @@
     }
 
     @media (max-width: 768px) {
+      .admin-logo-bar {
+        padding: 8px 16px;
+      }
+      .admin-header {
+        padding: 12px 16px;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .admin-header h1 {
+        font-size: 18px;
+      }
+      .header-actions {
+        flex-direction: column;
+        gap: 10px;
+      }
       .dashboard-stats {
         grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-bottom: 20px;
       }
-      
+      .stat-card {
+        padding: 14px;
+      }
+      .stat-value {
+        font-size: 24px;
+      }
+      .stat-card h3 {
+        font-size: 11px;
+      }
       .tabs {
         overflow-x: auto;
         flex-wrap: nowrap;
+        padding: 8px 12px 0;
+        -webkit-overflow-scrolling: touch;
       }
-      
       .tab {
         white-space: nowrap;
+        padding: 10px 14px;
+        font-size: 13px;
+        min-height: 44px;
+      }
+      .tab-content {
+        padding: 12px;
+      }
+
+      /* Card layout for tables on mobile */
+      table, thead, tbody, th, tr {
+        display: block;
+      }
+      thead {
+        display: none;
+      }
+      tbody tr {
+        background: white;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        padding: 14px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        border: 1px solid #f0f0f0;
+      }
+      td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 0;
+        border-top: none;
+        border-bottom: 1px solid #f5f5f5;
+        font-size: 14px;
+      }
+      td:last-child {
+        border-bottom: none;
+        padding-top: 10px;
+      }
+      td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #666;
+        font-size: 12px;
+        text-transform: uppercase;
+        flex-shrink: 0;
+        margin-right: 12px;
+      }
+      .data-table {
+        background: transparent;
+        box-shadow: none;
+      }
+      .table-header {
+        padding: 14px 4px;
+        border-bottom: none;
+      }
+      .table-header h2 {
+        font-size: 16px;
+      }
+      .btn { min-height: 44px; }
+      .btn-small { min-height: 36px; padding: 8px 14px; }
+      .modal-content {
+        max-width: 100%;
+        border-radius: 16px 16px 0 0;
+        max-height: 95vh;
+      }
+      .modal {
+        align-items: flex-end;
+        padding: 0;
+      }
+      .form-group input, .form-group select {
+        padding: 12px;
+        font-size: 16px;
+        min-height: 48px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .dashboard-stats {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .stat-card {
+        padding: 12px;
+      }
+      .stat-value {
+        font-size: 22px;
       }
     }
   </style>
 </head>
 <body>
+  <div class="admin-logo-bar">
+    <div class="admin-logos">
+      <img src="/E-Link-1024x500.png" alt="eLink">
+      <span class="logo-divider"></span>
+      <img src="/inova-logo.png" alt="INOVA" class="logo-inova">
+    </div>
+  </div>
   <div class="admin-header">
-    <h1>⚡ eLink Admin Panel</h1>
+    <h1>⚡ Admin Panel</h1>
     <div class="header-actions">
       <div style="display: flex; gap: 10px;">
         <span style="font-size: 14px; opacity: 0.9;">Welcome, Admin</span>
@@ -377,6 +524,7 @@
       <button class="tab" onclick="switchTab('users')">👥 Users</button>
       <button class="tab" onclick="switchTab('reservations')">📅 Reservations</button>
       <button class="tab" onclick="switchTab('transactions')">💳 Transactions</button>
+      <button class="tab" onclick="switchTab('demo')">🎮 Demo</button>
     </div>
 
     <!-- Stations Tab -->
@@ -472,6 +620,33 @@
         </table>
       </div>
     </div>
+    <!-- Demo Controls Tab -->
+    <div class="tab-content" id="demoTab">
+      <div class="data-table">
+        <div class="table-header">
+          <h2>Demo Simulation Controls</h2>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-success" onclick="setupDemo()">Setup Full Demo</button>
+            <button class="btn btn-danger" onclick="resetDemo()">Reset All</button>
+          </div>
+        </div>
+        <div id="demoStatus" style="padding:12px 15px;background:#e8f5e9;border-radius:8px;margin:0 15px 15px;font-size:14px;display:none;color:#2e7d32"></div>
+        <table>
+          <thead>
+            <tr>
+              <th>Station</th>
+              <th>Connection</th>
+              <th>Status</th>
+              <th>Live Data</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="demoTable">
+            <tr><td colspan="5" class="empty-state">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <!-- Station Modal -->
@@ -501,6 +676,14 @@
               <input type="number" id="stationPrice" required min="0.01" step="0.01" value="0.35">
             </div>
           </div>
+          <div class="form-group">
+            <label>Location <small style="color:#888">(search address or click map)</small></label>
+            <div style="display:flex;gap:6px;margin-bottom:8px">
+              <input type="text" id="mapSearchInput" placeholder="Search address..." style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();searchAddress()}">
+              <button type="button" class="btn btn-secondary" style="padding:6px 14px;white-space:nowrap" onclick="searchAddress()">Search</button>
+            </div>
+            <div id="stationMapPicker" style="height:220px;border-radius:8px;border:1px solid #ddd;margin-bottom:8px;z-index:1"></div>
+          </div>
           <div class="form-row">
             <div class="form-group">
               <label>Latitude</label>
@@ -514,6 +697,13 @@
           <div class="form-group">
             <label>Address</label>
             <input type="text" id="stationAddress">
+          </div>
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" id="stationHardware" style="width:auto;margin:0">
+              Real Hardware Charger
+            </label>
+            <small style="color:#888;display:block;margin-top:4px">Enable for chargers with real OCPP hardware (tries real connection before simulation fallback)</small>
           </div>
           <button type="submit" class="btn btn-success" style="width: 100%;">Save Station</button>
         </form>
@@ -575,6 +765,7 @@
       if (tabName === 'users') loadUsers();
       if (tabName === 'reservations') loadReservations();
       if (tabName === 'transactions') loadTransactions();
+      if (tabName === 'demo') loadDemoControls();
     }
 
     // Load stations
@@ -600,15 +791,15 @@
             statusClass = s.currentTransaction ? 'status-charging' : 'status-online';
             statusText = s.currentTransaction ? 'Charging' : 'Available';
           }
-          
+
           return `
             <tr>
-              <td><strong>${s.id}</strong></td>
-              <td>${s.name}</td>
-              <td><span class="status-badge ${statusClass}">${statusText}</span></td>
-              <td>${s.power} kW</td>
-              <td>${s.currentTransaction ? `⚡ ${s.currentTransaction.idTag}` : '—'}</td>
-              <td>
+              <td data-label="ID"><strong>${s.id}</strong></td>
+              <td data-label="Name">${s.name}</td>
+              <td data-label="Status"><span class="status-badge ${statusClass}">${statusText}</span></td>
+              <td data-label="Power">${s.power} kW</td>
+              <td data-label="Session">${s.currentTransaction ? `⚡ ${s.currentTransaction.idTag}` : '—'}</td>
+              <td data-label="">
                 <button class="btn btn-small btn-success" onclick="editStation('${s.id}')">Edit</button>
                 ${s.currentTransaction ? `<button class="btn btn-small btn-danger" onclick="stopCharging('${s.id}')">Stop</button>` : `<button class="btn btn-small btn-danger" onclick="deleteStation('${s.id}')">Delete</button>`}
               </td>
@@ -634,11 +825,11 @@
         tbody.innerHTML = data.users.map(u => {
           const date = new Date(u.createdAt).toLocaleDateString();
           return `<tr>
-            <td>${u.email}</td>
-            <td>${u.firstName || ''} ${u.lastName || ''}</td>
-            <td><span class="status-badge ${u.role === 'admin' ? 'status-charging' : 'status-online'}">${u.role}</span></td>
-            <td>${u.emailVerified ? '✓' : '✗'}</td>
-            <td>${date}</td>
+            <td data-label="Email">${u.email}</td>
+            <td data-label="Name">${u.firstName || ''} ${u.lastName || ''}</td>
+            <td data-label="Role"><span class="status-badge ${u.role === 'admin' ? 'status-charging' : 'status-online'}">${u.role}</span></td>
+            <td data-label="Verified">${u.emailVerified ? '✓' : '✗'}</td>
+            <td data-label="Joined">${date}</td>
           </tr>`;
         }).join('');
       } catch (error) {
@@ -668,11 +859,11 @@
           const end = new Date(r.endTime);
           return `
             <tr>
-              <td>${r.userEmail || r.userId}</td>
-              <td>${r.chargerId}</td>
-              <td>${start.toLocaleString()} - ${end.toLocaleTimeString()}</td>
-              <td><span class="status-badge status-${r.status}">${r.status}</span></td>
-              <td>
+              <td data-label="User">${r.userEmail || r.userId}</td>
+              <td data-label="Station">${r.chargerId}</td>
+              <td data-label="Time">${start.toLocaleString()} - ${end.toLocaleTimeString()}</td>
+              <td data-label="Status"><span class="status-badge status-${r.status}">${r.status}</span></td>
+              <td data-label="">
                 ${r.status === 'active' ? `<button class="btn btn-small btn-danger" onclick="cancelReservation('${r.id}')">Cancel</button>` : '—'}
               </td>
             </tr>
@@ -709,10 +900,10 @@
           const isTopUp = t.type === 'topup';
           return `
             <tr>
-              <td>${date.toLocaleString()}</td>
-              <td>${t.userId}</td>
-              <td>${isTopUp ? '💰 Top Up' : '⚡ Charging'}</td>
-              <td style="color: ${isTopUp ? '#2e7d32' : '#333'}; font-weight: 600;">
+              <td data-label="Date">${date.toLocaleString()}</td>
+              <td data-label="User">${t.userId}</td>
+              <td data-label="Type">${isTopUp ? '💰 Top Up' : '⚡ Charging'}</td>
+              <td data-label="Amount" style="color: ${isTopUp ? '#2e7d32' : '#333'}; font-weight: 600;">
                 ${isTopUp ? '+' : '-'}€${Math.abs(t.amount).toFixed(2)}
               </td>
             </tr>
@@ -730,31 +921,115 @@
       document.getElementById('stationForm').reset();
       document.getElementById('stationId').readOnly = false;
       document.getElementById('stationModal').classList.add('show');
+      initMapPicker(null, null);
     }
 
     function closeStationModal() {
       document.getElementById('stationModal').classList.remove('show');
+      if (pickerMap) {
+        pickerMap.remove();
+        pickerMap = null;
+        pickerMarker = null;
+      }
     }
 
     let editingStationId = null;
+    let pickerMap = null;
+    let pickerMarker = null;
+
+    function initMapPicker(lat, lng) {
+      // Destroy previous map instance if exists
+      if (pickerMap) {
+        pickerMap.remove();
+        pickerMap = null;
+        pickerMarker = null;
+      }
+
+      const defaultLat = lat || 41.9981;
+      const defaultLng = lng || 21.4314;
+
+      // Small delay to ensure modal is visible and container has dimensions
+      setTimeout(() => {
+        pickerMap = L.map('stationMapPicker').setView([defaultLat, defaultLng], lat ? 16 : 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; OSM'
+        }).addTo(pickerMap);
+
+        // Add marker if coordinates exist
+        if (lat && lng) {
+          pickerMarker = L.marker([lat, lng]).addTo(pickerMap);
+        }
+
+        // Click to set location
+        pickerMap.on('click', function(e) {
+          const { lat, lng } = e.latlng;
+          document.getElementById('stationLat').value = lat.toFixed(6);
+          document.getElementById('stationLng').value = lng.toFixed(6);
+
+          if (pickerMarker) {
+            pickerMarker.setLatLng(e.latlng);
+          } else {
+            pickerMarker = L.marker(e.latlng).addTo(pickerMap);
+          }
+        });
+
+        pickerMap.invalidateSize();
+      }, 100);
+    }
+
+    async function searchAddress() {
+      const query = document.getElementById('mapSearchInput').value.trim();
+      if (!query) return;
+
+      try {
+        const res = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(query));
+        const results = await res.json();
+        if (results.length === 0) {
+          alert('Address not found. Try a different search.');
+          return;
+        }
+
+        const { lat, lon, display_name } = results[0];
+        const latNum = parseFloat(lat);
+        const lngNum = parseFloat(lon);
+
+        document.getElementById('stationLat').value = latNum.toFixed(6);
+        document.getElementById('stationLng').value = lngNum.toFixed(6);
+        document.getElementById('stationAddress').value = display_name;
+
+        if (pickerMap) {
+          pickerMap.setView([latNum, lngNum], 17);
+          if (pickerMarker) {
+            pickerMarker.setLatLng([latNum, lngNum]);
+          } else {
+            pickerMarker = L.marker([latNum, lngNum]).addTo(pickerMap);
+          }
+        }
+      } catch (err) {
+        alert('Search failed. Check your internet connection.');
+      }
+    }
 
     function editStation(id) {
       editingStationId = id;
       document.getElementById('stationModalTitle').textContent = 'Edit Station';
 
       // Fetch station data
-      fetch(`/api/stations/${id}`)
+      fetch(`/api/stations/${encodeURIComponent(id)}`)
         .then(r => r.json())
         .then(s => {
           document.getElementById('stationId').value = s.id;
-          document.getElementById('stationId').readOnly = true;
+          document.getElementById('stationId').readOnly = false;
           document.getElementById('stationName').value = s.name || '';
           document.getElementById('stationPower').value = s.power || '';
           document.getElementById('stationPrice').value = s.pricePerKwh || 0.35;
           document.getElementById('stationLat').value = s.lat || '';
           document.getElementById('stationLng').value = s.lng || '';
           document.getElementById('stationAddress').value = s.address || '';
+          document.getElementById('stationHardware').checked = !!s.isHardware;
           document.getElementById('stationModal').classList.add('show');
+          initMapPicker(s.lat, s.lng);
         })
         .catch(() => alert('Failed to load station'));
     }
@@ -769,14 +1044,19 @@
         pricePerKwh: parseFloat(document.getElementById('stationPrice').value),
         lat: parseFloat(document.getElementById('stationLat').value),
         lng: parseFloat(document.getElementById('stationLng').value),
-        address: document.getElementById('stationAddress').value.trim()
+        address: document.getElementById('stationAddress').value.trim(),
+        isHardware: document.getElementById('stationHardware').checked
       };
 
       try {
         let response;
         if (editingStationId) {
+          // If ID changed, include newId in payload
+          if (data.id !== editingStationId) {
+            data.newId = data.id;
+          }
           // Update existing
-          response = await fetch(`/api/stations/${editingStationId}`, {
+          response = await fetch(`/api/stations/${encodeURIComponent(editingStationId)}`, {
             method: 'PUT',
             headers: getAuthHeaders(),
             body: JSON.stringify(data)
@@ -807,7 +1087,7 @@
       if (!confirm(`Delete station ${id}? This cannot be undone.`)) return;
 
       try {
-        const response = await fetch(`/api/stations/${id}`, {
+        const response = await fetch(`/api/stations/${encodeURIComponent(id)}`, {
           method: 'DELETE',
           headers: getAuthHeaders()
         });
@@ -826,7 +1106,7 @@
       if (!confirm('Stop charging session?')) return;
       
       try {
-        await fetch(`/api/stations/${stationId}/stop`, {
+        await fetch(`/api/stations/${encodeURIComponent(stationId)}/stop`, {
           method: 'POST',
           headers: getAuthHeaders()
         });
@@ -854,10 +1134,127 @@
       alert('Export feature coming soon');
     }
 
+    // === Demo Controls ===
+    async function loadDemoControls() {
+      try {
+        const [stationsRes, simRes] = await Promise.all([
+          fetch('/api/stations'),
+          fetch('/api/simulate/status', { headers: getAuthHeaders() })
+        ]);
+        const stations = await stationsRes.json();
+        const simStatus = simRes.ok ? await simRes.json() : { activeSimulations: [] };
+
+        const simMap = {};
+        simStatus.activeSimulations.forEach(s => { simMap[s.stationId] = s; });
+
+        const tbody = document.getElementById('demoTable');
+        tbody.innerHTML = stations.map(s => {
+          const sim = simMap[s.id];
+          const isSimulated = s.connectionSource === 'simulation';
+          const isRealOCPP = s.connectionSource === 'ocpp' && s.connected;
+          const isCitrine = s.connectionSource === 'citrineos' && s.connected;
+          const isCharging = !!s.currentTransaction;
+
+          let connBadge = '<span style="color:#999">Offline</span>';
+          if (isRealOCPP) connBadge = '<span style="color:#1976d2;font-weight:600">OCPP</span>';
+          else if (isCitrine) connBadge = '<span style="color:#7b1fa2;font-weight:600">CitrineOS</span>';
+          else if (isSimulated && s.connected) connBadge = '<span style="color:#388e3c;font-weight:600">Simulated</span>';
+
+          let statusText = s.status || 'Offline';
+          let statusColor = '#999';
+          if (isCharging) { statusText = 'Charging'; statusColor = '#f9a825'; }
+          else if (s.connected) { statusColor = '#388e3c'; }
+
+          let liveData = '-';
+          if (isCharging && s.currentTransaction) {
+            const tx = s.currentTransaction;
+            const pKw = tx.power ? (tx.power / 1000).toFixed(1) : '0';
+            liveData = pKw + ' kW | ' + (tx.energy || '0') + ' kWh | SoC: ' + (tx.soc ? Math.round(tx.soc) : '?') + '%';
+          }
+
+          let actions = '';
+          if (isRealOCPP || isCitrine) {
+            actions = '<span style="color:#888;font-size:12px">Real connection</span>';
+          } else if (!s.connected) {
+            actions = '<button class="btn btn-success" style="padding:4px 10px;font-size:12px" onclick="simConnect(\'' + s.id + '\')">Connect</button>';
+          } else if (s.connected && !isCharging) {
+            actions = '<button class="btn btn-success" style="padding:4px 10px;font-size:12px;margin-right:5px" onclick="simStart(\'' + s.id + '\')">Start</button>' +
+              '<button class="btn btn-secondary" style="padding:4px 10px;font-size:12px" onclick="simDisconnect(\'' + s.id + '\')">Off</button>';
+          } else if (isCharging) {
+            actions = '<button class="btn btn-danger" style="padding:4px 10px;font-size:12px" onclick="simStop(\'' + s.id + '\')">Stop</button>';
+          }
+
+          return '<tr>' +
+            '<td data-label="Station"><strong>' + s.id + '</strong><br><small>' + (s.name || '') + '</small></td>' +
+            '<td data-label="Connection">' + connBadge + '</td>' +
+            '<td data-label="Status" style="color:' + statusColor + ';font-weight:600">' + statusText + '</td>' +
+            '<td data-label="Live Data" style="font-size:12px">' + liveData + '</td>' +
+            '<td data-label="Actions">' + actions + '</td>' +
+          '</tr>';
+        }).join('');
+      } catch (err) {
+        console.error('Failed to load demo controls:', err);
+      }
+    }
+
+    async function simConnect(id) {
+      await fetch('/api/simulate/connect/' + encodeURIComponent(id), { method: 'POST', headers: getAuthHeaders() });
+      showDemoStatus('Connected station ' + id);
+      loadDemoControls();
+    }
+
+    async function simStart(id) {
+      await fetch('/api/simulate/start/' + encodeURIComponent(id), { method: 'POST', headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' }, body: '{}' });
+      showDemoStatus('Started charging on ' + id);
+      loadDemoControls();
+    }
+
+    async function simStop(id) {
+      await fetch('/api/simulate/stop/' + encodeURIComponent(id), { method: 'POST', headers: getAuthHeaders() });
+      showDemoStatus('Stopped charging on ' + id);
+      loadDemoControls();
+    }
+
+    async function simDisconnect(id) {
+      await fetch('/api/simulate/disconnect/' + encodeURIComponent(id), { method: 'POST', headers: getAuthHeaders() });
+      showDemoStatus('Disconnected station ' + id);
+      loadDemoControls();
+    }
+
+    async function setupDemo() {
+      if (!confirm('Connect all offline stations and start a sample charging session?')) return;
+      const res = await fetch('/api/simulate/demo-setup', { method: 'POST', headers: getAuthHeaders() });
+      const data = await res.json();
+      showDemoStatus('Demo setup complete: ' + data.results.length + ' stations configured');
+      loadDemoControls();
+      loadStations();
+    }
+
+    async function resetDemo() {
+      if (!confirm('Disconnect all simulated stations? Real connections unaffected.')) return;
+      const stationsRes = await fetch('/api/stations');
+      const stations = await stationsRes.json();
+      for (const s of stations) {
+        if (s.connectionSource === 'simulation') {
+          await fetch('/api/simulate/disconnect/' + encodeURIComponent(s.id), { method: 'POST', headers: getAuthHeaders() });
+        }
+      }
+      showDemoStatus('All simulations stopped');
+      loadDemoControls();
+      loadStations();
+    }
+
+    function showDemoStatus(msg) {
+      const el = document.getElementById('demoStatus');
+      el.style.display = 'block';
+      el.textContent = msg;
+      setTimeout(() => { el.style.display = 'none'; }, 3000);
+    }
+
     // Initial load
     loadStations();
     loadTransactions();
-    
+
     // Refresh every 10 seconds
     setInterval(() => {
       loadStations();
@@ -866,6 +1263,9 @@
       }
       if (document.getElementById('transactionsTab').classList.contains('active')) {
         loadTransactions();
+      }
+      if (document.getElementById('demoTab').classList.contains('active')) {
+        loadDemoControls();
       }
     }, 10000);
   </script>

@@ -16,22 +16,21 @@
     <!-- Header -->
     <header class="header">
       <div class="header-left">
-        <img src="/E-Link-1024x500.png" alt="elink" class="logo">
-        <img src="/inova-logo.png" alt="INOVA MK" class="logo partner-logo" onerror="this.style.display='none'">
-        <h1>EV Charging</h1>
-      </div>
-      <div class="header-right">
-        <div class="stats-badge" id="statsBadge">Loading...</div>
-        <div class="connection-status" id="connectionStatus">
-          <span class="dot offline"></span>
-          <span>Connecting...</span>
+        <div class="dual-logo">
+          <img src="/E-Link-1024x500.png" alt="eLink" class="logo">
+          <span class="logo-divider"></span>
+          <img src="/inova-logo.png" alt="INOVA" class="logo logo-inova">
         </div>
+        <span class="dot offline" id="connectionDot" style="margin-left:4px"></span>
+      </div>
+      <div class="header-right" id="headerRight">
+        <!-- User menu injected by JS -->
       </div>
     </header>
 
     <!-- Search Bar -->
     <div class="search-bar" id="searchBar">
-      <input type="text" id="searchInput" placeholder="Search stations..." autocomplete="off">
+      <input type="text" id="searchInput" data-i18n="search_stations" placeholder="Search stations..." autocomplete="off">
       <div class="search-results hidden" id="searchResults"></div>
     </div>
 
@@ -40,8 +39,11 @@
 
     <!-- Station Panel (slides up when station selected) -->
     <div class="panel" id="stationPanel">
-      <div class="panel-handle" onclick="closePanel()"></div>
-      
+      <div class="panel-top">
+        <div class="panel-handle" onclick="closePanel()"></div>
+        <button class="panel-close-btn" onclick="closePanel()" aria-label="Close">&times;</button>
+      </div>
+
       <!-- Station Info -->
       <div class="station-header">
         <h2 id="stationName">Station</h2>
@@ -50,18 +52,25 @@
       
       <div class="station-details">
         <div class="detail-row">
-          <span class="label">Power Output</span>
+          <span class="label" data-i18n="power_output">Power Output</span>
           <span class="value" id="stationPower">-- kW</span>
         </div>
         <div class="detail-row">
-          <span class="label">Connector Type</span>
-          <span class="value">Type 2 AC</span>
+          <span class="label" data-i18n="connector_type">Connector Type</span>
+          <span class="value" data-i18n="type2_ac">Type 2 AC</span>
         </div>
         <div class="detail-row">
-          <span class="label">Address</span>
+          <span class="label" data-i18n="price_per_kwh">Price per kWh</span>
+          <span class="value" id="stationPrice">--</span>
+        </div>
+        <div class="detail-row">
+          <span class="label" data-i18n="address">Address</span>
           <span class="value" id="stationAddress">--</span>
         </div>
       </div>
+
+      <!-- Connection Phase Overlay (shown between payment and active charging) -->
+      <div class="connection-phase-overlay hidden" id="connectionPhaseOverlay"></div>
 
       <!-- Charging Status (shown during active session) -->
       <div class="charging-display hidden" id="chargingDisplay">
@@ -72,60 +81,63 @@
           </div>
           <div class="battery-info">
             <div class="battery-percent" id="batteryPercent">0%</div>
-            <div class="battery-label">Battery Level</div>
+            <div class="battery-label" data-i18n="battery_level">Battery Level</div>
           </div>
         </div>
 
-        <!-- Charging Stats -->
-        <div class="charging-stats">
-          <div class="stat">
+        <!-- Charging Stats 2x2 Grid -->
+        <div class="charging-stats-grid">
+          <div class="stat-card">
+            <div class="stat-card-icon">&#9889;</div>
             <span class="stat-value" id="currentPower">0</span>
             <span class="stat-unit">kW</span>
-            <span class="stat-label">Power</span>
+            <span class="stat-label" data-i18n="power">Power</span>
           </div>
-          <div class="stat primary">
+          <div class="stat-card primary">
+            <div class="stat-card-icon">&#128267;</div>
             <span class="stat-value" id="energyDelivered">0.00</span>
             <span class="stat-unit">kWh</span>
-            <span class="stat-label">Energy</span>
+            <span class="stat-label" data-i18n="energy">Energy</span>
           </div>
-          <div class="stat">
+          <div class="stat-card">
+            <div class="stat-card-icon">&#9201;</div>
             <span class="stat-value" id="chargingTime">0:00</span>
             <span class="stat-unit"></span>
-            <span class="stat-label">Duration</span>
+            <span class="stat-label" data-i18n="duration">Duration</span>
           </div>
-        </div>
-
-        <!-- Cost Display -->
-        <div class="cost-display">
-          <div class="cost-amount" id="costAmount">€0.00</div>
-          <div class="cost-label">Estimated Cost</div>
+          <div class="stat-card cost">
+            <div class="stat-card-icon">&#128176;</div>
+            <span class="stat-value" id="costAmount">&euro;0.00</span>
+            <span class="stat-unit"></span>
+            <span class="stat-label" data-i18n="estimated_cost">Estimated Cost</span>
+          </div>
         </div>
 
         <!-- Technical Details (collapsible) -->
         <div class="technical-data" id="technicalData" style="display: none;">
           <div class="tech-header" onclick="toggleTechnicalData()">
-            <span>📊 Technical Data</span>
-            <span class="toggle-icon" id="techToggleIcon">▼</span>
+            <span data-i18n="technical_data">Technical Data</span>
+            <span class="toggle-icon" id="techToggleIcon">&#9660;</span>
           </div>
           <div class="tech-content" id="techContent" style="display: none;">
             <div class="tech-row">
-              <span class="tech-label">Voltage</span>
+              <span class="tech-label" data-i18n="voltage">Voltage</span>
               <span class="tech-value" id="techVoltage">-- V</span>
             </div>
             <div class="tech-row">
-              <span class="tech-label">Current</span>
+              <span class="tech-label" data-i18n="current">Current</span>
               <span class="tech-value" id="techCurrent">-- A</span>
             </div>
             <div class="tech-row">
-              <span class="tech-label">Temperature</span>
-              <span class="tech-value" id="techTemperature">-- °C</span>
+              <span class="tech-label" data-i18n="temperature">Temperature</span>
+              <span class="tech-value" id="techTemperature">-- &deg;C</span>
             </div>
             <div class="tech-row">
-              <span class="tech-label">Max Power</span>
+              <span class="tech-label" data-i18n="max_power">Max Power</span>
               <span class="tech-value" id="techMaxPower">-- kW</span>
             </div>
             <div class="tech-row">
-              <span class="tech-label">Data Age</span>
+              <span class="tech-label" data-i18n="data_age">Data Age</span>
               <span class="tech-value" id="techDataAge">-- s</span>
             </div>
           </div>
@@ -134,20 +146,20 @@
         <!-- Charging Animation -->
         <div class="charging-animation">
           <div class="pulse"></div>
-          <span>Charging in progress...</span>
+          <span data-i18n="charging_in_progress">Charging in progress...</span>
         </div>
       </div>
 
       <!-- Action Buttons -->
       <div class="actions" id="actions">
         <button class="btn btn-primary" id="startBtn" onclick="showPayment()">
-          ⚡ Start Charging
+          <span data-i18n="start_charging">Start Charging</span>
         </button>
         <button class="btn btn-danger hidden" id="stopBtn" onclick="stopCharging()">
-          ⏹ Stop Charging
+          <span data-i18n="stop_charging">Stop Charging</span>
         </button>
-        <button class="btn btn-secondary" id="navigateBtn" onclick="navigateToStation()" style="background:#2196F3;color:white;margin-top:8px">
-          Navigate
+        <button class="btn btn-secondary" id="navigateBtn" onclick="navigateToStation()" style="background:#2196F3;color:white">
+          <span data-i18n="navigate">Navigate</span>
         </button>
       </div>
     </div>
@@ -156,7 +168,7 @@
     <div class="modal hidden" id="paymentModal">
       <div class="modal-content">
         <div class="modal-header">
-          <h3>Payment</h3>
+          <h3 data-i18n="payment">Payment</h3>
           <button class="close-btn" onclick="closePayment()">&times;</button>
         </div>
         <div class="modal-body">
@@ -165,7 +177,7 @@
           </div>
 
           <div class="form-group">
-            <label>Card Number</label>
+            <label data-i18n="card_number">Card Number</label>
             <div style="position:relative">
               <input type="text" id="cardNumber" placeholder="1234 5678 9012 3456"
                      maxlength="19" inputmode="numeric" autocomplete="cc-number"
@@ -176,11 +188,11 @@
 
           <div class="form-row">
             <div class="form-group">
-              <label>Expiry Date</label>
+              <label data-i18n="expiry_date">Expiry Date</label>
               <input type="text" id="cardExpiry" placeholder="MM / YY" maxlength="5" autocomplete="cc-exp">
             </div>
             <div class="form-group">
-              <label>Security Code</label>
+              <label data-i18n="security_code">Security Code</label>
               <input type="password" id="cardCvv" placeholder="CVV" maxlength="4" inputmode="numeric" autocomplete="cc-csc">
             </div>
           </div>
@@ -188,14 +200,14 @@
           <div id="cardError" style="display:none;color:#c62828;font-size:13px;margin-bottom:12px;padding:8px 12px;background:#ffebee;border-radius:8px"></div>
 
           <button class="btn btn-primary btn-full" id="payBtn" onclick="processPayment()" style="position:relative;overflow:hidden">
-            <span id="payBtnText">Authorize & Start Charging</span>
+            <span id="payBtnText" data-i18n="authorize_start">Authorize & Start Charging</span>
             <span id="payBtnSpinner" style="display:none;position:absolute;inset:0;background:#689F38;display:none;align-items:center;justify-content:center">
               Processing...
             </span>
           </button>
 
           <div style="text-align:center;margin-top:14px;font-size:11px;color:#aaa">
-            Visa, Mastercard, and Maestro accepted
+            <span data-i18n="cards_accepted">Visa, Mastercard, and Maestro accepted</span>
           </div>
         </div>
       </div>
@@ -205,35 +217,35 @@
     <div class="modal hidden" id="summaryModal">
       <div class="modal-content">
         <div class="modal-header">
-          <h3>✅ Session Complete</h3>
+          <h3 data-i18n="session_complete">Session Complete</h3>
           <button class="close-btn" onclick="closeSummary()">&times;</button>
         </div>
         <div class="modal-body summary-content">
           <div class="summary-icon">⚡</div>
-          <h3 class="summary-title">Charging Complete!</h3>
-          <p class="summary-subtitle">Thank you for charging with elink</p>
+          <h3 class="summary-title" data-i18n="charging_complete">Charging Complete!</h3>
+          <p class="summary-subtitle" data-i18n="thank_you">Thank you for charging with elink</p>
           
           <div class="summary-stats">
             <div class="summary-stat">
-              <span class="summary-stat-label">Energy Delivered</span>
+              <span class="summary-stat-label" data-i18n="energy_delivered">Energy Delivered</span>
               <span class="summary-stat-value" id="summaryEnergy">0.00 kWh</span>
             </div>
             <div class="summary-stat">
-              <span class="summary-stat-label">Charging Duration</span>
+              <span class="summary-stat-label" data-i18n="charging_duration">Charging Duration</span>
               <span class="summary-stat-value" id="summaryDuration">0:00</span>
             </div>
             <div class="summary-stat">
-              <span class="summary-stat-label">Average Power</span>
+              <span class="summary-stat-label" data-i18n="average_power">Average Power</span>
               <span class="summary-stat-value" id="summaryAvgPower">0 kW</span>
             </div>
             <div class="summary-stat">
-              <span class="summary-stat-label">Total Cost</span>
+              <span class="summary-stat-label" data-i18n="total_cost">Total Cost</span>
               <span class="summary-stat-value highlight" id="summaryCost">€0.00</span>
             </div>
           </div>
           
           <button class="btn btn-primary btn-full" onclick="closeSummary()">
-            Done
+            <span data-i18n="done">Done</span>
           </button>
         </div>
       </div>
@@ -244,9 +256,26 @@
       <span class="toast-icon">ℹ️</span>
       <span id="toastMessage"></span>
     </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav" id="bottomNav">
+      <button class="nav-item active" onclick="navMap()" id="navMapBtn">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+        <span data-i18n="map">Map</span>
+      </button>
+      <button class="nav-item" onclick="navSearch()" id="navSearchBtn">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span data-i18n="search">Search</span>
+      </button>
+      <button class="nav-item" onclick="navProfile()" id="navProfileBtn">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span id="navProfileLabel" data-i18n="profile">Profile</span>
+      </button>
+    </nav>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/i18n.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

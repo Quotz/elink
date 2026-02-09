@@ -191,6 +191,35 @@ class Database {
 
       CREATE INDEX IF NOT EXISTS idx_wallet_transactions_user ON wallet_transactions(user_id);
     `);
+
+    // Seed default admin account
+    this.seedDefaultAdmin();
+  }
+
+  seedDefaultAdmin() {
+    this.db.get('SELECT id FROM users WHERE email = ?', ['admin'], (err, row) => {
+      if (err) {
+        console.error('[DB] Error checking admin:', err);
+        return;
+      }
+      if (!row) {
+        const passwordHash = bcrypt.hashSync('admin', 10);
+        this.db.run(
+          `INSERT INTO users (id, email, password_hash, role, first_name, last_name, email_verified)
+           VALUES (?, ?, ?, 'admin', 'Admin', 'eLink', 1)`,
+          ['admin-default', 'admin', passwordHash],
+          (err) => {
+            if (err) {
+              if (!err.message.includes('UNIQUE constraint')) {
+                console.error('[DB] Error creating admin:', err);
+              }
+            } else {
+              console.log('[DB] Default admin account created (admin/admin)');
+            }
+          }
+        );
+      }
+    });
   }
 
   // User methods
@@ -623,6 +652,21 @@ class Database {
         function(err) {
           if (err) reject(err);
           else resolve(this.changes > 0);
+        }
+      );
+    });
+  }
+
+  async getRecentReservation(userId, sinceTimestamp) {
+    return new Promise((resolve, reject) => {
+      this.db.get(
+        `SELECT * FROM reservations
+         WHERE user_id = ? AND created_at > ?
+         ORDER BY created_at DESC LIMIT 1`,
+        [userId, sinceTimestamp],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
         }
       );
     });
