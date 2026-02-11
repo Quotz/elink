@@ -5,7 +5,7 @@ const store = require('../store');
 const simulator = require('../simulator');
 const citrineClient = require('../citrine-client');
 const { sendToCharger } = require('../ocpp-handler');
-const { optionalAuth } = require('../auth');
+const { authenticateToken } = require('../auth');
 const { broadcastUpdate, broadcastConnectionPhase } = require('../websocket');
 const { DEMO_CHARGER_ID, DEMO_AWAIT_SECONDS, DEFAULT_AWAIT_SECONDS, USE_CITRINE_POLLING } = require('../config');
 
@@ -15,17 +15,16 @@ const startingStations = new Set();
 const pendingConnectionTimeouts = new Map();
 
 // Start charging
-router.post('/stations/:id/start', optionalAuth, async (req, res) => {
+router.post('/stations/:id/start', authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const { idTag } = req.body;
-  console.log(`[Start] Request for ${id}, user: ${req.user?.id || 'anon'}`);
+  console.log(`[Start] Request for ${id}, user: ${req.user.id}`);
 
   const station = store.getStation(id);
   if (!station) return res.status(404).json({ error: 'Station not found' });
   if (!station.connected) return res.status(400).json({ error: 'Charger is offline' });
   if (startingStations.has(id)) return res.status(429).json({ error: 'Start already in progress' });
 
-  const effectiveIdTag = req.user?.id || idTag || 'DEMO-TAG-001';
+  const effectiveIdTag = req.user.id;
 
   if (id === DEMO_CHARGER_ID) {
     console.log(`[Start] Demo charger ${id}: ${DEMO_AWAIT_SECONDS}s await`);
@@ -86,11 +85,16 @@ router.post('/stations/:id/start', optionalAuth, async (req, res) => {
 });
 
 // Stop charging
-router.post('/stations/:id/stop', optionalAuth, async (req, res) => {
+router.post('/stations/:id/stop', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const station = store.getStation(id);
   if (!station) return res.status(404).json({ error: 'Station not found' });
   if (!station.currentTransaction) return res.status(400).json({ error: 'No active transaction' });
+
+  // Only session owner or admin can stop
+  if (req.user.id !== station.currentTransaction.idTag && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Not your charging session' });
+  }
 
   if (station.connectionSource === 'simulation') {
     const result = simulator.simulateStop(id);

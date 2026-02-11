@@ -195,6 +195,12 @@ const TRANSLATIONS = {
     'data_may_be_outdated': 'Connection lost. Data may be outdated.',
     'reconnecting': 'Reconnecting...',
 
+    // Occupied / Privacy
+    'station_occupied': 'Station In Use',
+    'station_occupied_desc': 'This station is currently being used by another driver.',
+    'sign_in_to_charge': 'Please sign in to start charging',
+    'demo_card_hint': 'Demo: use any valid card (e.g. 4242 4242 4242 4242)',
+
     // Payment validation
     'invalid_card_number': 'Please enter a valid 16-digit card number',
     'invalid_expiry': 'Please enter a valid expiry date (MM/YY)',
@@ -403,6 +409,12 @@ const TRANSLATIONS = {
     'confirm_stop_desc': 'Дали сте сигурни дека сакате да го прекинете полнењето?',
     'data_may_be_outdated': 'Конекцијата е изгубена. Податоците може да се застарени.',
     'reconnecting': 'Повторно поврзување...',
+
+    // Occupied / Privacy
+    'station_occupied': 'Станицата е зафатена',
+    'station_occupied_desc': 'Оваа станица моментално е користена од друг возач.',
+    'sign_in_to_charge': 'Најавете се за да започнете полнење',
+    'demo_card_hint': 'Демо: користете било кој валиден број (нпр. 4242 4242 4242 4242)',
 
     // Payment validation
     'invalid_card_number': 'Внесете валиден 16-цифрен број на картичка',

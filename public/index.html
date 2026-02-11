@@ -161,7 +161,7 @@
 
       <!-- Action Buttons -->
       <div class="actions" id="actions">
-        <button class="btn btn-primary" id="startBtn" onclick="showPayment()">
+        <button class="btn btn-primary" id="startBtn" onclick="handleStartClick()">
           <span data-i18n="start_charging">Start Charging</span>
         </button>
         <button class="btn btn-danger hidden" id="stopBtn" onclick="stopCharging()">
@@ -193,6 +193,7 @@
                      style="padding-right:60px">
               <span id="cardBrandIcon" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:24px;opacity:0.6"></span>
             </div>
+            <div style="font-size:11px;color:#888;margin:-4px 0 8px 2px;font-style:italic" data-i18n="demo_card_hint">Demo: use any valid card (e.g. 4242 4242 4242 4242)</div>
           </div>
 
           <div class="form-row">

@@ -5,6 +5,9 @@ var _wsMaxDelay = 60000;
 function connectWebSocket() {
   var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   var wsUrl = protocol + '//' + window.location.host + '/live';
+  if (authToken) {
+    wsUrl += '?token=' + encodeURIComponent(authToken);
+  }
   ws = new WebSocket(wsUrl);
 
   ws.onopen = function() {
@@ -34,7 +37,10 @@ function connectWebSocket() {
         var updated = stations.find(function(s) { return s.id === selectedStation.id; });
         if (updated) {
           if (selectedStation.currentTransaction && !updated.currentTransaction) {
-            showSessionSummary(selectedStation.currentTransaction);
+            // Only show summary if this was our own session (has idTag = full data from server)
+            var wasOwner = selectedStation.currentTransaction.idTag && currentUser &&
+              selectedStation.currentTransaction.idTag === currentUser.id;
+            if (wasOwner) showSessionSummary(selectedStation.currentTransaction);
           }
           if (connectionPhase && updated.currentTransaction) {
             hideConnectionPhaseUI();
@@ -64,10 +70,17 @@ function connectWebSocket() {
   };
 }
 
+function reconnectWebSocket() {
+  if (ws) {
+    ws.close();
+    // onclose handler will auto-reconnect with current authToken
+  }
+}
+
 async function pollStationStatus() {
   if (!selectedStation) return;
   try {
-    var response = await fetch('/api/stations/' + encodeURIComponent(selectedStation.id));
+    var response = await fetchWithAuth('/api/stations/' + encodeURIComponent(selectedStation.id));
     if (response.ok) {
       var data = await response.json();
       var stationIndex = stations.findIndex(function(s) { return s.id === selectedStation.id; });

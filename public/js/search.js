@@ -18,8 +18,8 @@ function initSearch() {
     } else {
       results.innerHTML = matches.map(function(s) {
         var statusClass = getStatusClass(s);
-        var statusText = statusClass === 'charging' ? t('charging') : statusClass === 'available' ? t('available') : t('offline');
-        var statusColor = statusClass === 'charging' ? '#ef6c00;background:#fff3e0' : statusClass === 'available' ? '#2e7d32;background:#e8f5e9' : '#666;background:#f5f5f5';
+        var statusText = statusClass === 'charging' ? t('charging') : statusClass === 'occupied' ? t('station_occupied') : statusClass === 'available' ? t('available') : t('offline');
+        var statusColor = statusClass === 'charging' ? '#ef6c00;background:#fff3e0' : statusClass === 'occupied' ? '#d97706;background:#fffbeb' : statusClass === 'available' ? '#2e7d32;background:#e8f5e9' : '#666;background:#f5f5f5';
         return '<div class="search-result-item" onclick="searchSelectStation(\'' + s.id + '\')">' +
           '<div><div class="search-result-name">' + s.name + '</div>' +
           '<div class="search-result-address">' + (s.address || '') + ' &bull; ' + s.power + ' kW</div></div>' +

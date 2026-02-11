@@ -2,13 +2,26 @@ const express = require('express');
 const router = express.Router();
 const store = require('../store');
 const simulator = require('../simulator');
-const { authenticateToken, requireRole } = require('../auth');
+const { authenticateToken, optionalAuth, requireRole } = require('../auth');
 const { broadcastUpdate } = require('../websocket');
 const { DEMO_MODE } = require('../config');
 
+function sanitizeStation(station, userId) {
+  if (!station.currentTransaction) return station;
+  if (userId && station.currentTransaction.idTag === userId) return station;
+  return {
+    ...station,
+    currentTransaction: {
+      active: true,
+      startTime: station.currentTransaction.startTime
+    }
+  };
+}
+
 // List all stations
-router.get('/', (req, res) => {
-  res.json(store.getStations());
+router.get('/', optionalAuth, (req, res) => {
+  const userId = req.user?.id;
+  res.json(store.getStations().map(s => sanitizeStation(s, userId)));
 });
 
 // Server status
@@ -24,25 +37,23 @@ router.get('/status', (req, res) => {
 });
 
 // Get single station
-router.get('/:id', (req, res) => {
+router.get('/:id', optionalAuth, (req, res) => {
   const station = store.getStation(req.params.id);
-  if (station) {
-    res.json(station);
-  } else {
-    res.status(404).json({ error: 'Station not found' });
-  }
+  if (!station) return res.status(404).json({ error: 'Station not found' });
+  res.json(sanitizeStation(station, req.user?.id));
 });
 
 // Session history
-router.get('/:id/sessions', (req, res) => {
+router.get('/:id/sessions', optionalAuth, (req, res) => {
   const station = store.getStation(req.params.id);
   if (!station) {
     return res.status(404).json({ error: 'Station not found' });
   }
+  const sanitized = sanitizeStation(station, req.user?.id);
   res.json({
     sessions: station.sessionHistory || [],
     lastTransaction: station.lastTransaction || null,
-    currentTransaction: station.currentTransaction || null
+    currentTransaction: sanitized.currentTransaction || null
   });
 });
 
@@ -111,6 +122,27 @@ router.delete('/:id', authenticateToken, requireRole('admin'), (req, res) => {
   }
   broadcastUpdate();
   res.json({ success: true, message: 'Station deleted' });
+});
+
+// Reset station to available (admin)
+router.post('/:id/reset', authenticateToken, requireRole('admin'), (req, res) => {
+  const { id } = req.params;
+  const station = store.getStation(id);
+  if (!station) return res.status(404).json({ error: 'Station not found' });
+
+  if (station.connectionSource === 'simulation') {
+    simulator.simulateDisconnect(id);
+    simulator.simulateConnect(id);
+  } else {
+    store.updateStation(id, {
+      status: 'Available',
+      currentTransaction: null,
+      meterHistory: []
+    });
+  }
+
+  broadcastUpdate();
+  res.json({ success: true, message: 'Station reset to Available' });
 });
 
 module.exports = router;

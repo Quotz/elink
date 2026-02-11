@@ -1,5 +1,6 @@
 const WebSocket = require('ws');
 const store = require('./store');
+const { verifyAccessToken } = require('./auth');
 
 let ocppWss = null;
 let browserWss = null;
@@ -44,7 +45,16 @@ function init(server) {
         ocppWss.emit('connection', ws, request);
       });
     } else if (url.pathname === '/live') {
+      // Extract JWT from query param for per-user filtering
+      const token = url.searchParams.get('token');
+      let userId = null;
+      if (token) {
+        const decoded = verifyAccessToken(token);
+        if (decoded) userId = decoded.userId;
+      }
+
       browserWss.handleUpgrade(request, socket, head, (ws) => {
+        ws.userId = userId;
         browserWss.emit('connection', ws, request);
       });
     } else {
@@ -55,8 +65,8 @@ function init(server) {
 
   // Browser WebSocket handling
   browserWss.on('connection', (ws) => {
-    console.log('[Browser] Client connected');
-    ws.send(JSON.stringify({ type: 'init', stations: store.getStations() }));
+    console.log(`[Browser] Client connected, userId: ${ws.userId || 'anonymous'}`);
+    ws.send(JSON.stringify({ type: 'init', stations: sanitizeStationsForUser(store.getStations(), ws.userId) }));
     ws.on('close', () => console.log('[Browser] Client disconnected'));
   });
 }
@@ -64,12 +74,29 @@ function init(server) {
 function getOcppWss() { return ocppWss; }
 function getBrowserWss() { return browserWss; }
 
+function sanitizeStationsForUser(stations, userId) {
+  return stations.map(station => {
+    if (!station.currentTransaction) return station;
+    // Owner sees full data
+    if (userId && station.currentTransaction.idTag === userId) return station;
+    // Everyone else sees only that it's occupied
+    return {
+      ...station,
+      currentTransaction: {
+        active: true,
+        startTime: station.currentTransaction.startTime
+      }
+    };
+  });
+}
+
 function broadcastUpdate() {
   if (!browserWss) return;
-  const message = JSON.stringify({ type: 'update', stations: store.getStations() });
+  const allStations = store.getStations();
   browserWss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(message);
+      const filtered = sanitizeStationsForUser(allStations, client.userId);
+      client.send(JSON.stringify({ type: 'update', stations: filtered }));
     }
   });
 }

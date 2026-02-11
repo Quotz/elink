@@ -819,7 +819,7 @@
               <td data-label="Session">${s.currentTransaction ? `⚡ ${s.currentTransaction.idTag}` : '—'}</td>
               <td data-label="">
                 <button class="btn btn-small btn-success" onclick="editStation('${s.id}')">Edit</button>
-                ${s.currentTransaction ? `<button class="btn btn-small btn-danger" onclick="stopCharging('${s.id}')">Stop</button>` : `<button class="btn btn-small btn-danger" onclick="deleteStation('${s.id}')">Delete</button>`}
+                ${s.currentTransaction ? `<button class="btn btn-small btn-danger" onclick="stopCharging('${s.id}')">Stop</button> <button class="btn btn-small" onclick="resetStation('${s.id}')" style="background:#d97706;color:white">Reset</button>` : `<button class="btn btn-small btn-danger" onclick="deleteStation('${s.id}')">Delete</button>`}
               </td>
             </tr>
           `;
@@ -1133,6 +1133,25 @@
         loadStations();
       } catch (error) {
         showAdminToast('Failed to stop charging', 'error');
+      }
+    }
+
+    async function resetStation(stationId) {
+      if (!confirm('Reset station ' + stationId + ' to Available? This will clear any active session.')) return;
+      try {
+        const response = await fetch(`/api/stations/${encodeURIComponent(stationId)}/reset`, {
+          method: 'POST',
+          headers: getAuthHeaders()
+        });
+        if (!response.ok) {
+          const err = await response.json();
+          showAdminToast(err.error || 'Failed to reset', 'error');
+          return;
+        }
+        showAdminToast('Station reset to Available');
+        loadStations();
+      } catch (error) {
+        showAdminToast('Failed to reset station', 'error');
       }
     }
 

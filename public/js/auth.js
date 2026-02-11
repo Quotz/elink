@@ -117,5 +117,9 @@ function logout() {
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
   localStorage.removeItem('user');
+  currentUser = null;
+  authToken = null;
+  // Reconnect WebSocket as anonymous so session data is filtered
+  if (typeof reconnectWebSocket === 'function') reconnectWebSocket();
   window.location.href = '/login.html';
 }

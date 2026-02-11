@@ -88,7 +88,14 @@ function getStatusClass(station) {
     (citrineStationStatus[station.id] && citrineStationStatus[station.id].connected) ||
     (station.lastHeartbeat && (Date.now() - station.lastHeartbeat) < 120000);
   if (!isConnected) return 'offline';
-  if (station.status === 'Charging') return 'charging';
+  if (station.status === 'Charging' || station.currentTransaction) {
+    // Owner sees "charging", everyone else sees "occupied"
+    if (station.currentTransaction && station.currentTransaction.idTag &&
+        currentUser && station.currentTransaction.idTag === currentUser.id) {
+      return 'charging';
+    }
+    return 'occupied';
+  }
   if (station.status === 'Available' || station.status === 'Preparing') return 'available';
   return 'offline';
 }

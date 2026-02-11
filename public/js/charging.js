@@ -1,3 +1,12 @@
+function handleStartClick() {
+  if (!currentUser) {
+    showToast(t('sign_in_to_charge'), 'info');
+    setTimeout(function() { window.location.href = '/login.html'; }, 1500);
+    return;
+  }
+  showPayment();
+}
+
 async function startCharging(paymentToken) {
   if (!selectedStation) return;
   var startBtn = document.getElementById('startBtn');
@@ -6,9 +15,8 @@ async function startCharging(paymentToken) {
   sessionData = { startBattery: INITIAL_BATTERY, startTime: new Date(), maxPower: 0 };
 
   try {
-    var response = await fetch('/api/stations/' + encodeURIComponent(selectedStation.id) + '/start', {
+    var response = await fetchWithAuth('/api/stations/' + encodeURIComponent(selectedStation.id) + '/start', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ idTag: paymentToken })
     });
     var result = await response.json();
@@ -62,9 +70,8 @@ async function confirmAndStopCharging() {
   if (stopBtn) { stopBtn.disabled = true; stopBtn.textContent = '\u23F9 ' + t('stopping'); }
 
   try {
-    var response = await fetch('/api/stations/' + encodeURIComponent(selectedStation.id) + '/stop', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+    var response = await fetchWithAuth('/api/stations/' + encodeURIComponent(selectedStation.id) + '/stop', {
+      method: 'POST'
     });
     var result = await response.json();
     if (response.ok) {

@@ -2,7 +2,10 @@ async function selectStation(stationId) {
   selectedStation = stations.find(function(s) { return s.id === stationId; });
   if (!selectedStation) return;
   map.panTo([selectedStation.lat, selectedStation.lng]);
-  if (selectedStation.currentTransaction && !sessionData.startTime) {
+  // Only track session data if this is our own charging session
+  var isOwnSession = selectedStation.currentTransaction && selectedStation.currentTransaction.idTag &&
+    currentUser && selectedStation.currentTransaction.idTag === currentUser.id;
+  if (isOwnSession && !sessionData.startTime) {
     sessionData.startTime = new Date(selectedStation.currentTransaction.startTime);
     sessionData.startBattery = INITIAL_BATTERY;
     sessionData.maxPower = 0;
@@ -63,24 +66,31 @@ function updatePanel() {
   var isConnected = selectedStation.connected || isCitrineConnected || hasRecentHeartbeat;
 
   var status = selectedStation.status || t('offline');
+  var badgeClass = 'offline';
   if (isConnected) {
     switch (selectedStation.status) {
-      case 'Preparing': status = '\uD83D\uDD0C ' + t('status_ready_plug'); break;
-      case 'Available': status = '\u2713 ' + t('available'); break;
-      case 'Charging': status = '\u26A1 ' + t('charging'); break;
-      case 'Finishing': status = t('status_finishing'); break;
-      case 'Suspended': status = '\u23F8 ' + t('status_paused'); break;
-      case 'Faulted': status = '\u26A0\uFE0F ' + t('status_error'); break;
-      default: status = selectedStation.status || 'Unknown';
+      case 'Preparing': status = '\uD83D\uDD0C ' + t('status_ready_plug'); badgeClass = 'preparing'; break;
+      case 'Available': status = '\u2713 ' + t('available'); badgeClass = 'available'; break;
+      case 'Charging':
+        // Check if this is our session or someone else's
+        var txOwner = selectedStation.currentTransaction && selectedStation.currentTransaction.idTag &&
+          currentUser && selectedStation.currentTransaction.idTag === currentUser.id;
+        if (txOwner) {
+          status = '\u26A1 ' + t('charging'); badgeClass = 'charging';
+        } else {
+          status = '\u26A1 ' + t('station_occupied'); badgeClass = 'occupied';
+        }
+        break;
+      case 'Finishing': status = t('status_finishing'); badgeClass = 'finishing'; break;
+      case 'Suspended': status = '\u23F8 ' + t('status_paused'); badgeClass = 'suspended'; break;
+      case 'Faulted': status = '\u26A0\uFE0F ' + t('status_error'); badgeClass = 'faulted'; break;
+      default: status = selectedStation.status || 'Unknown'; badgeClass = (selectedStation.status || 'available').toLowerCase();
     }
-  } else {
-    status = t('offline');
   }
 
   if (statusBadge) {
     statusBadge.textContent = status;
-    var statusClass = isConnected ? (selectedStation.status || 'available').toLowerCase() : 'offline';
-    statusBadge.className = 'status-badge ' + statusClass;
+    statusBadge.className = 'status-badge ' + badgeClass;
   }
 
   var chargingDisplay = document.getElementById('chargingDisplay');
@@ -89,50 +99,69 @@ function updatePanel() {
   var reserveBtn = document.getElementById('reserveBtn');
 
   if (selectedStation.currentTransaction) {
-    if (connectionPhase) hideConnectionPhaseUI();
-    if (chargingDisplay) chargingDisplay.classList.remove('hidden');
-    if (startBtn) startBtn.classList.add('hidden');
-    if (stopBtn) stopBtn.classList.remove('hidden');
-    if (reserveBtn) reserveBtn.style.display = 'none';
-
+    hideCostPreview();
     var tx = selectedStation.currentTransaction;
-    var power = tx.power || 0;
-    var energy = parseFloat(tx.energy) || 0;
-    var voltage = tx.voltage || 0;
-    var current = tx.current || 0;
-    var soc = tx.soc || 0;
-    var temperature = tx.temperature || 0;
-    var dataAge = Date.now() - (selectedStation.lastHeartbeat || Date.now());
-    var isDataFresh = dataAge < 15000;
-    var hasActiveFlow = power > 100;
+    // Determine if current user owns this session
+    var isOwner = tx.idTag && currentUser && tx.idTag === currentUser.id;
+    var isOccupied = tx.active && !isOwner;
 
-    var currentPowerEl = document.getElementById('currentPower');
-    if (currentPowerEl) {
-      currentPowerEl.textContent = (power / 1000).toFixed(1);
-      var powerElement = currentPowerEl.parentElement;
-      if (powerElement) {
-        powerElement.style.opacity = !isDataFresh ? '0.6' : (!hasActiveFlow && tx.energy > 0) ? '0.8' : '1';
+    if (isOccupied) {
+      // Non-owner: show "In Use" state
+      if (connectionPhase) hideConnectionPhaseUI();
+      if (chargingDisplay) chargingDisplay.classList.add('hidden');
+      if (startBtn) startBtn.classList.add('hidden');
+      if (stopBtn) stopBtn.classList.add('hidden');
+      if (reserveBtn) reserveBtn.style.display = 'none';
+      if (chargingTimer) { clearInterval(chargingTimer); chargingTimer = null; }
+      showOccupiedMessage();
+    } else {
+      // Owner: show full charging data
+      hideOccupiedMessage();
+      if (connectionPhase) hideConnectionPhaseUI();
+      if (chargingDisplay) chargingDisplay.classList.remove('hidden');
+      if (startBtn) startBtn.classList.add('hidden');
+      if (stopBtn) stopBtn.classList.remove('hidden');
+      if (reserveBtn) reserveBtn.style.display = 'none';
+
+      var power = tx.power || 0;
+      var energy = parseFloat(tx.energy) || 0;
+      var voltage = tx.voltage || 0;
+      var current = tx.current || 0;
+      var soc = tx.soc || 0;
+      var temperature = tx.temperature || 0;
+      var dataAge = Date.now() - (selectedStation.lastHeartbeat || Date.now());
+      var isDataFresh = dataAge < 15000;
+      var hasActiveFlow = power > 100;
+
+      var currentPowerEl = document.getElementById('currentPower');
+      if (currentPowerEl) {
+        currentPowerEl.textContent = (power / 1000).toFixed(1);
+        var powerElement = currentPowerEl.parentElement;
+        if (powerElement) {
+          powerElement.style.opacity = !isDataFresh ? '0.6' : (!hasActiveFlow && tx.energy > 0) ? '0.8' : '1';
+        }
       }
+
+      var energyEl = document.getElementById('energyDelivered');
+      if (energyEl) energyEl.textContent = Math.max(0, energy).toFixed(2);
+
+      var costEl = document.getElementById('costAmount');
+      var pricePerKwh = (selectedStation && selectedStation.pricePerKwh) || DEFAULT_COST_PER_KWH;
+      var costEur = Math.max(0, energy) * pricePerKwh;
+      if (costEl) costEl.textContent = typeof formatPrice === 'function' ? formatPrice(costEur) : '\u20AC' + costEur.toFixed(2);
+
+      updateBatteryIndicator(energy, soc);
+      if (power > sessionData.maxPower) sessionData.maxPower = power;
+      updateTechnicalData(voltage, current, temperature, dataAge);
+
+      if (!chargingTimer) {
+        chargingStartTime = new Date(selectedStation.currentTransaction.startTime);
+        chargingTimer = setInterval(updateChargingTime, 1000);
+      }
+      updateChargingTime();
     }
-
-    var energyEl = document.getElementById('energyDelivered');
-    if (energyEl) energyEl.textContent = Math.max(0, energy).toFixed(2);
-
-    var costEl = document.getElementById('costAmount');
-    var pricePerKwh = (selectedStation && selectedStation.pricePerKwh) || DEFAULT_COST_PER_KWH;
-    var costEur = Math.max(0, energy) * pricePerKwh;
-    if (costEl) costEl.textContent = typeof formatPrice === 'function' ? formatPrice(costEur) : '\u20AC' + costEur.toFixed(2);
-
-    updateBatteryIndicator(energy, soc);
-    if (power > sessionData.maxPower) sessionData.maxPower = power;
-    updateTechnicalData(voltage, current, temperature, dataAge);
-
-    if (!chargingTimer) {
-      chargingStartTime = new Date(selectedStation.currentTransaction.startTime);
-      chargingTimer = setInterval(updateChargingTime, 1000);
-    }
-    updateChargingTime();
   } else {
+    hideOccupiedMessage();
     if (chargingDisplay) chargingDisplay.classList.add('hidden');
     if (stopBtn) stopBtn.classList.add('hidden');
     if (chargingTimer) { clearInterval(chargingTimer); chargingTimer = null; }
@@ -141,10 +170,13 @@ function updatePanel() {
     if (isConnected && (selectedStation.status === 'Available' || selectedStation.status === 'Preparing')) {
       if (startBtn) { startBtn.classList.remove('hidden'); startBtn.disabled = false; }
       if (reserveBtn) reserveBtn.style.display = 'block';
+      showCostPreview();
     } else if (isConnected) {
+      hideCostPreview();
       if (startBtn) { startBtn.classList.remove('hidden'); startBtn.disabled = true; startBtn.textContent = '\u23F3 ' + t('not_available'); }
       if (reserveBtn) reserveBtn.style.display = 'none';
     } else {
+      hideCostPreview();
       if (startBtn) startBtn.classList.add('hidden');
       if (reserveBtn) reserveBtn.style.display = 'none';
     }
@@ -253,6 +285,51 @@ function closeSummary() {
   if (modal) modal.classList.add('hidden');
 }
 
+function showOccupiedMessage() {
+  var el = document.getElementById('occupiedMessage');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'occupiedMessage';
+    el.className = 'occupied-message';
+    var actions = document.getElementById('actions');
+    if (actions) actions.parentNode.insertBefore(el, actions);
+  }
+  el.innerHTML =
+    '<div class="occupied-icon">&#128268;</div>' +
+    '<h3>' + t('station_occupied') + '</h3>' +
+    '<p>' + t('station_occupied_desc') + '</p>';
+  el.classList.remove('hidden');
+}
+
+function hideOccupiedMessage() {
+  var el = document.getElementById('occupiedMessage');
+  if (el) el.classList.add('hidden');
+}
+
+function showCostPreview() {
+  if (!selectedStation) return;
+  var el = document.getElementById('costPreview');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'costPreview';
+    el.className = 'cost-preview';
+    var startBtn = document.getElementById('startBtn');
+    if (startBtn) startBtn.parentNode.insertBefore(el, startBtn);
+  }
+  var price = selectedStation.pricePerKwh || DEFAULT_COST_PER_KWH;
+  var power = selectedStation.power || 7;
+  var hourCost = price * power;
+  el.innerHTML = t('estimated_cost') + ': <strong>' +
+    (typeof formatPrice === 'function' ? formatPrice(hourCost) : '\u20AC' + hourCost.toFixed(2)) +
+    '/hr</strong> at ' + power + ' kW';
+  el.classList.remove('hidden');
+}
+
+function hideCostPreview() {
+  var el = document.getElementById('costPreview');
+  if (el) el.classList.add('hidden');
+}
+
 function showConnectionPhaseUI(result) {
   var overlay = document.getElementById('connectionPhaseOverlay');
   var chargingDisplay = document.getElementById('chargingDisplay');
@@ -261,8 +338,7 @@ function showConnectionPhaseUI(result) {
   overlay.classList.remove('hidden');
   overlay.classList.remove('fade-out');
   connectionPhase = 'awaiting_car';
-  var waitTime = result.isDemoCharger ? 20 : 30;
-  overlay.innerHTML = '<div class="connection-phase-content"><div class="car-plug-animation"><div class="car-icon"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14"/><path d="M6 17V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v10"/><rect x="3" y="14" width="18" height="3" rx="1"/><circle cx="7" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/><path d="M12 8v3"/><path d="M10.5 9.5h3"/></svg></div><div class="plug-connector-line"><div class="plug-pulse"></div></div><div class="charger-icon">&#9889;</div></div><h3 class="connection-phase-title">' + t('awaiting_car_connection') + '</h3><p class="connection-phase-subtitle">' + t('please_plug_in') + '</p><div class="connection-progress"><div class="connection-progress-bar" style="animation-duration: ' + waitTime + 's"></div></div></div>';
+  overlay.innerHTML = '<div class="connection-phase-content"><div class="car-plug-animation"><div class="car-icon"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14"/><path d="M6 17V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v10"/><rect x="3" y="14" width="18" height="3" rx="1"/><circle cx="7" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/><path d="M12 8v3"/><path d="M10.5 9.5h3"/></svg></div><div class="plug-connector-line"><div class="plug-pulse"></div></div><div class="charger-icon">&#9889;</div></div><h3 class="connection-phase-title">' + t('awaiting_car_connection') + '</h3><p class="connection-phase-subtitle">' + t('please_plug_in') + '</p></div>';
   overlay._countdownInterval = null;
 }
 
@@ -280,8 +356,6 @@ function updateConnectionPhaseUI(data) {
       if (subtitle) subtitle.textContent = t('vehicle_now_charging');
       var animEl = overlay.querySelector('.car-plug-animation');
       if (animEl) animEl.outerHTML = '<div class="checkmark-circle success"><div class="checkmark">&#9889;</div></div>';
-      var progressBar = overlay.querySelector('.connection-progress');
-      if (progressBar) progressBar.style.display = 'none';
       if (navigator.vibrate) navigator.vibrate(200);
       showToast(t('charging_started'), 'success');
       setTimeout(function() { hideConnectionPhaseUI(); }, 1500);
@@ -292,8 +366,6 @@ function updateConnectionPhaseUI(data) {
       if (subtitle) subtitle.textContent = t('no_vehicle_detected');
       var animEl2 = overlay.querySelector('.car-plug-animation');
       if (animEl2) animEl2.outerHTML = '<div class="timeout-circle"><div class="timeout-icon">&#9203;</div></div>';
-      var progressBar2 = overlay.querySelector('.connection-progress');
-      if (progressBar2) progressBar2.style.display = 'none';
       if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
       setTimeout(function() {
         hideConnectionPhaseUI();
