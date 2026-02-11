@@ -7,20 +7,10 @@ const router = express.Router();
 const citrineClient = require('../citrine-client');
 const db = require('../database');
 const { authenticateToken, requireRole } = require('../auth');
-
-// Note: '../database' and '../citrine-client' are correct since we're in server/routes/
-
-// Broadcast function for WebSocket updates (set by index.js)
-let broadcastUpdate = null;
-
-function setBroadcastUpdate(fn) {
-  broadcastUpdate = fn;
-}
+const { broadcastUpdate } = require('../websocket');
 
 function notifyClients() {
-  if (broadcastUpdate) {
-    broadcastUpdate();
-  }
+  broadcastUpdate();
 }
 
 // Health check
@@ -317,4 +307,3 @@ router.post('/webhook', async (req, res) => {
 });
 
 module.exports = router;
-module.exports.setBroadcastUpdate = setBroadcastUpdate;

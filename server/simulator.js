@@ -5,15 +5,10 @@
  */
 
 const store = require('./store');
+const { broadcastUpdate: broadcastFn } = require('./websocket');
 
 // Active simulation state per station
 const simState = new Map();
-
-let broadcastFn = null;
-
-function init(broadcastUpdate) {
-  broadcastFn = broadcastUpdate;
-}
 
 /**
  * Simulate a charger connecting (like BootNotification)
@@ -53,7 +48,7 @@ function simulateConnect(id) {
 
   simState.set(id, { heartbeatInterval, meterInterval: null });
 
-  if (broadcastFn) broadcastFn();
+  broadcastFn();
   return { success: true, stationId: id, status: 'connected' };
 }
 
@@ -96,7 +91,7 @@ function simulateStart(id, options = {}) {
 
   state.meterInterval = meterInterval;
 
-  if (broadcastFn) broadcastFn();
+  broadcastFn();
   return { success: true, stationId: id, transactionId, status: 'charging' };
 }
 
@@ -191,7 +186,7 @@ function simulateMeterTick(stationId) {
     meterHistory
   });
 
-  if (broadcastFn) broadcastFn();
+  broadcastFn();
 }
 
 /**
@@ -238,7 +233,7 @@ function simulateStop(id) {
     meterHistory: []
   });
 
-  if (broadcastFn) broadcastFn();
+  broadcastFn();
   return { success: true, stationId: id, status: 'stopped', session: completedSession };
 }
 
@@ -266,7 +261,7 @@ function simulateDisconnect(id) {
       status: 'Offline',
       connectionSource: null
     });
-    if (broadcastFn) broadcastFn();
+    broadcastFn();
   }
 
   return { success: true, stationId: id, status: 'disconnected' };
@@ -349,7 +344,6 @@ function stopAll() {
 }
 
 module.exports = {
-  init,
   simulateConnect,
   simulateStart,
   simulateStop,

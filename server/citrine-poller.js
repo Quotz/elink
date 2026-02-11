@@ -5,10 +5,11 @@
 
 const citrineClient = require('./citrine-client');
 const store = require('./store');
+const { broadcastUpdate } = require('./websocket');
 
 class CitrinePoller {
-  constructor(broadcastFn) {
-    this.broadcast = broadcastFn;
+  constructor() {
+    this.broadcast = broadcastUpdate;
     this.interval = null;
     this.pollIntervalMs = 15000; // 15 seconds
     this.isRunning = false;
