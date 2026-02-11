@@ -70,9 +70,9 @@ body {
 }
 
 .logo {
-  height: 30px;
+  height: 38px;
   width: auto;
-  max-width: 120px;
+  max-width: 150px;
 }
 
 .dual-logo {
@@ -83,14 +83,14 @@ body {
 
 .logo-divider {
   width: 1px;
-  height: 22px;
+  height: 28px;
   background: var(--gray-300);
   flex-shrink: 0;
 }
 
 .logo-inova {
-  height: 24px;
-  max-width: 100px;
+  height: 30px;
+  max-width: 120px;
   object-fit: contain;
 }
 
@@ -100,30 +100,6 @@ body {
   gap: 8px;
 }
 
-/* Connection dot in header */
-.dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--gray-300);
-  transition: all 0.3s ease;
-  flex-shrink: 0;
-}
-
-.dot.online {
-  background: var(--success);
-  box-shadow: 0 0 6px rgba(76, 175, 80, 0.5);
-  animation: pulse-dot 2s infinite;
-}
-
-.dot.offline {
-  background: var(--danger);
-}
-
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.7; transform: scale(1.2); }
-}
 
 /* Search Bar */
 .search-bar {
@@ -1262,11 +1238,11 @@ body {
   }
 
   .logo {
-    height: 34px;
+    height: 40px;
   }
 
   .logo-inova {
-    height: 28px;
+    height: 34px;
     max-width: 140px;
   }
 
@@ -1358,17 +1334,17 @@ body {
   }
 
   .logo {
+    height: 30px;
+    max-width: 110px;
+  }
+
+  .logo-inova {
     height: 24px;
     max-width: 90px;
   }
 
-  .logo-inova {
-    height: 18px;
-    max-width: 70px;
-  }
-
   .logo-divider {
-    height: 18px;
+    height: 22px;
   }
 }
 

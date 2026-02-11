@@ -58,8 +58,7 @@ function getStatusClass(station) {
 }
 
 function updateConnectionStatus(online) {
-  var dot = document.getElementById('connectionDot');
-  if (dot) dot.className = 'dot ' + (online ? 'online' : 'offline');
+  // Connection dot removed from header for cleaner UX
 }
 
 function updateHeaderStats() {
