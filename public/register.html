@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#7CB342">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>Sign Up - eLink</title>
@@ -203,9 +203,12 @@
         const data = await response.json();
 
         if (response.ok) {
-          document.getElementById('registerForm').style.display = 'none';
-          document.getElementById('authFooter').style.display = 'none';
-          document.getElementById('successMessage').classList.add('show');
+          // Auto-login with returned tokens
+          localStorage.setItem('accessToken', data.accessToken);
+          localStorage.setItem('refreshToken', data.refreshToken);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          window.location.href = '/';
+          return;
         } else {
           errorDiv.textContent = data.error || t('registration_failed');
           errorDiv.classList.add('show');

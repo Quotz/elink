@@ -49,9 +49,8 @@ async function makeReservationNow() {
   if (btn) { btn.disabled = true; btn.textContent = t('reserving'); }
 
   try {
-    var response = await fetch('/api/reservations', {
+    var response = await fetchWithAuth('/api/reservations', {
       method: 'POST',
-      headers: getAuthHeaders(),
       body: JSON.stringify({ chargerId: selectedStation.id })
     });
     var data = await response.json();

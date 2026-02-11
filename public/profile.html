@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#7CB342">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>My Profile - eLink</title>
@@ -367,6 +367,7 @@
   </nav>
 
   <script src="/i18n.js"></script>
+  <script src="/js/toast.js"></script>
   <script>
     let currentUser = null;
     let selectedAmount = 0;
@@ -569,12 +570,12 @@
           hidePaymentModal();
           loadBalance();
           loadTransactions();
-          alert(t('payment_successful'));
+          showToast(t('payment_successful'), 'success');
         } else {
-          alert(t('payment_failed_retry'));
+          showToast(t('payment_failed_retry'), 'error');
         }
       } catch (error) {
-        alert(t('network_error'));
+        showToast(t('network_error'), 'error');
       } finally {
         btn.disabled = false;
         btn.querySelector('[data-i18n]').textContent = t('pay_now');
@@ -593,10 +594,10 @@
         if (response.ok) {
           loadReservations();
         } else {
-          alert(t('failed_cancel_reservation'));
+          showToast(t('failed_cancel_reservation'), 'error');
         }
       } catch (error) {
-        alert(t('network_error'));
+        showToast(t('network_error'), 'error');
       }
     }
 

@@ -17,9 +17,9 @@ function initSearch() {
       results.innerHTML = '<div style="padding:14px;text-align:center;color:#999;font-size:0.85rem">' + t('no_stations_found') + '</div>';
     } else {
       results.innerHTML = matches.map(function(s) {
-        var isOnline = s.connected || (s.lastHeartbeat && (Date.now() - s.lastHeartbeat) < 120000);
-        var statusText = s.currentTransaction ? t('charging') : isOnline ? t('available') : t('offline');
-        var statusColor = s.currentTransaction ? '#ef6c00;background:#fff3e0' : isOnline ? '#2e7d32;background:#e8f5e9' : '#666;background:#f5f5f5';
+        var statusClass = getStatusClass(s);
+        var statusText = statusClass === 'charging' ? t('charging') : statusClass === 'available' ? t('available') : t('offline');
+        var statusColor = statusClass === 'charging' ? '#ef6c00;background:#fff3e0' : statusClass === 'available' ? '#2e7d32;background:#e8f5e9' : '#666;background:#f5f5f5';
         return '<div class="search-result-item" onclick="searchSelectStation(\'' + s.id + '\')">' +
           '<div><div class="search-result-name">' + s.name + '</div>' +
           '<div class="search-result-address">' + (s.address || '') + ' &bull; ' + s.power + ' kW</div></div>' +

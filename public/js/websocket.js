@@ -1,3 +1,7 @@
+var _wsReconnectDelay = 3000;
+var _wsReconnectAttempts = 0;
+var _wsMaxDelay = 60000;
+
 function connectWebSocket() {
   var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   var wsUrl = protocol + '//' + window.location.host + '/live';
@@ -5,6 +9,8 @@ function connectWebSocket() {
 
   ws.onopen = function() {
     console.log('WebSocket connected');
+    _wsReconnectDelay = 3000;
+    _wsReconnectAttempts = 0;
     updateConnectionStatus(true);
   };
 
@@ -43,7 +49,14 @@ function connectWebSocket() {
   ws.onclose = function() {
     console.log('WebSocket disconnected');
     updateConnectionStatus(false);
-    setTimeout(connectWebSocket, 3000);
+    _wsReconnectAttempts++;
+
+    // Exponential backoff with jitter
+    var jitter = Math.random() * 1000;
+    var delay = Math.min(_wsReconnectDelay + jitter, _wsMaxDelay);
+    _wsReconnectDelay = Math.min(_wsReconnectDelay * 2, _wsMaxDelay);
+
+    setTimeout(connectWebSocket, delay);
   };
 
   ws.onerror = function(error) {

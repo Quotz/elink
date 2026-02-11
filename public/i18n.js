@@ -187,6 +187,31 @@ const TRANSLATIONS = {
     'status_paused': 'Paused',
     'status_error': 'Error',
     'status_finishing': 'Finishing...',
+
+    // UX improvements
+    'location_unavailable': 'Location unavailable. Please enable location services.',
+    'confirm_stop': 'Stop Charging?',
+    'confirm_stop_desc': 'Are you sure you want to stop this charging session?',
+    'data_may_be_outdated': 'Connection lost. Data may be outdated.',
+    'reconnecting': 'Reconnecting...',
+
+    // Payment validation
+    'invalid_card_number': 'Please enter a valid 16-digit card number',
+    'invalid_expiry': 'Please enter a valid expiry date (MM/YY)',
+    'invalid_cvv': 'Please enter a valid security code',
+
+    // Forgot password
+    'enter_new_password': 'Enter your new password',
+    'sending': 'Sending...',
+    'check_your_email': 'Check Your Email',
+    'reset_email_sent': 'If an account exists with that email, we\'ve sent password reset instructions.',
+    'passwords_no_match': 'Passwords do not match',
+    'password_min_length': 'Password must be at least 8 characters',
+    'resetting': 'Resetting...',
+    'password_reset_done': 'Password Reset!',
+    'password_updated': 'Your password has been updated successfully.',
+    'sign_in_now': 'Sign in now',
+    'reset_failed': 'Reset failed. The link may have expired.',
   },
 
   mk: {
@@ -371,6 +396,31 @@ const TRANSLATIONS = {
     'status_paused': 'Паузирано',
     'status_error': 'Грешка',
     'status_finishing': 'Завршува...',
+
+    // UX improvements
+    'location_unavailable': 'Локацијата не е достапна. Вклучете ги локациските услуги.',
+    'confirm_stop': 'Прекини полнење?',
+    'confirm_stop_desc': 'Дали сте сигурни дека сакате да го прекинете полнењето?',
+    'data_may_be_outdated': 'Конекцијата е изгубена. Податоците може да се застарени.',
+    'reconnecting': 'Повторно поврзување...',
+
+    // Payment validation
+    'invalid_card_number': 'Внесете валиден 16-цифрен број на картичка',
+    'invalid_expiry': 'Внесете валиден датум на истек (MM/YY)',
+    'invalid_cvv': 'Внесете валиден безбедносен код',
+
+    // Forgot password
+    'enter_new_password': 'Внесете нова лозинка',
+    'sending': 'Испраќање...',
+    'check_your_email': 'Проверете ја е-поштата',
+    'reset_email_sent': 'Ако постои сметка со таа е-пошта, испративме инструкции за ресетирање.',
+    'passwords_no_match': 'Лозинките не се совпаѓаат',
+    'password_min_length': 'Лозинката мора да има најмалку 8 знаци',
+    'resetting': 'Ресетирање...',
+    'password_reset_done': 'Лозинката е ресетирана!',
+    'password_updated': 'Вашата лозинка е успешно ажурирана.',
+    'sign_in_now': 'Најавете се сега',
+    'reset_failed': 'Ресетирањето не успеа. Линкот можеби е истечен.',
   }
 };
 

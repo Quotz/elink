@@ -24,16 +24,16 @@ function updateAuthUI() {
         '<span class="user-name">' + (currentUser.firstName || 'User') + '</span>' +
         '<span class="dropdown-icon">\u25BC</span>' +
       '</button>' +
-      '<div class="user-dropdown hidden" id="userDropdown">' +
-        '<a href="/profile.html" class="dropdown-item">\uD83D\uDC64 Profile & Wallet</a>' +
+      '<div class="user-dropdown hidden" id="userDropdown" role="menu">' +
+        '<a href="/profile.html" class="dropdown-item" role="menuitem" tabindex="0">\uD83D\uDC64 Profile & Wallet</a>' +
         adminLink +
         '<div class="dropdown-divider"></div>' +
-        '<div class="dropdown-item" style="gap:10px;cursor:default">' +
+        '<div class="dropdown-item" style="gap:10px;cursor:default" role="menuitem">' +
           '<button class="toggle-btn" id="langToggle" onclick="event.stopPropagation();toggleLanguage()">MK</button>' +
           '<button class="toggle-btn" id="currencyToggle" onclick="event.stopPropagation();toggleCurrency()">MKD</button>' +
         '</div>' +
         '<div class="dropdown-divider"></div>' +
-        '<button class="dropdown-item" onclick="logout()">\uD83D\uDEAA Logout</button>' +
+        '<button class="dropdown-item" onclick="logout()" role="menuitem" tabindex="0">\uD83D\uDEAA Logout</button>' +
       '</div>';
   } else {
     userMenu.innerHTML = '<button class="btn btn-login" onclick="window.location.href=\'/login.html\'">Sign In</button>';
@@ -47,7 +47,20 @@ function updateAuthUI() {
 
 function toggleUserMenu() {
   var dropdown = document.getElementById('userDropdown');
-  if (dropdown) dropdown.classList.toggle('hidden');
+  if (!dropdown) return;
+  var isHidden = dropdown.classList.toggle('hidden');
+  if (!isHidden) {
+    // Focus first item and add keyboard navigation
+    var firstItem = dropdown.querySelector('[role="menuitem"]');
+    if (firstItem) firstItem.focus();
+    dropdown.onkeydown = function(e) {
+      var items = Array.from(dropdown.querySelectorAll('[role="menuitem"]'));
+      var idx = items.indexOf(document.activeElement);
+      if (e.key === 'ArrowDown') { e.preventDefault(); if (idx < items.length - 1) items[idx + 1].focus(); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); if (idx > 0) items[idx - 1].focus(); }
+      if (e.key === 'Escape') { dropdown.classList.add('hidden'); document.querySelector('.user-menu-btn').focus(); }
+    };
+  }
 }
 
 // Close dropdown when clicking outside
@@ -81,13 +94,28 @@ function navSearch() {
 }
 
 function navProfile() {
+  // Save current station for restoration on return
+  if (selectedStation) {
+    sessionStorage.setItem('elink_returnStation', selectedStation.id);
+  }
   if (currentUser) window.location.href = '/profile.html';
   else window.location.href = '/login.html';
 }
 
 function logout() {
+  // Revoke refresh token server-side (fire and forget)
+  var refreshToken = localStorage.getItem('refreshToken');
+  if (refreshToken) {
+    try {
+      fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: refreshToken })
+      });
+    } catch (e) { /* ignore */ }
+  }
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
   localStorage.removeItem('user');
-  window.location.reload();
+  window.location.href = '/login.html';
 }

@@ -7,9 +7,32 @@ async function selectStation(stationId) {
     sessionData.startBattery = INITIAL_BATTERY;
     sessionData.maxPower = 0;
   }
+  // Show panel immediately with skeleton placeholders
+  showPanelSkeleton();
+  openPanel();
   await fetchCitrineStationStatus(stationId);
   updatePanel();
-  openPanel();
+}
+
+function showPanelSkeleton() {
+  if (!selectedStation) return;
+  var stationName = document.getElementById('stationName');
+  var stationPower = document.getElementById('stationPower');
+  var stationAddress = document.getElementById('stationAddress');
+  var stationPrice = document.getElementById('stationPrice');
+  var statusBadge = document.getElementById('stationStatus');
+  var startBtn = document.getElementById('startBtn');
+  var stopBtn = document.getElementById('stopBtn');
+  var chargingDisplay = document.getElementById('chargingDisplay');
+  // Show name from cached data, skeleton for the rest
+  if (stationName) stationName.textContent = selectedStation.name || 'Station';
+  if (stationPower) stationPower.innerHTML = '<span class="skeleton" style="width:50px">&nbsp;</span>';
+  if (stationAddress) stationAddress.innerHTML = '<span class="skeleton" style="width:120px">&nbsp;</span>';
+  if (stationPrice) stationPrice.innerHTML = '<span class="skeleton" style="width:60px">&nbsp;</span>';
+  if (statusBadge) { statusBadge.textContent = ''; statusBadge.className = 'status-badge'; statusBadge.innerHTML = '<span class="skeleton" style="width:70px">&nbsp;</span>'; }
+  if (startBtn) startBtn.classList.add('hidden');
+  if (stopBtn) stopBtn.classList.add('hidden');
+  if (chargingDisplay) chargingDisplay.classList.add('hidden');
 }
 
 function updatePanel() {
@@ -49,11 +72,6 @@ function updatePanel() {
       case 'Suspended': status = '\u23F8 ' + t('status_paused'); break;
       case 'Faulted': status = '\u26A0\uFE0F ' + t('status_error'); break;
       default: status = selectedStation.status || 'Unknown';
-    }
-    if (selectedStation.lastHeartbeat) {
-      var secondsAgo = Math.floor((Date.now() - selectedStation.lastHeartbeat) / 1000);
-      if (secondsAgo < 15) status += ' \u2022 ' + t('status_active');
-      else if (secondsAgo < 60) status += ' \u2022 ' + secondsAgo + 's ago';
     }
   } else {
     status = t('offline');
@@ -166,18 +184,34 @@ function updateChargingTime() {
   if (el) el.textContent = timeStr;
 }
 
+var _panelPushedState = false;
+
 function openPanel() {
   var panel = document.getElementById('stationPanel');
   if (panel) panel.classList.add('open');
+  // Push browser history state for back button support
+  if (selectedStation) {
+    history.pushState({ panel: 'station', stationId: selectedStation.id }, '', '#station=' + encodeURIComponent(selectedStation.id));
+    _panelPushedState = true;
+  }
 }
 
-function closePanel() {
+function closePanel(skipHistory) {
   var panel = document.getElementById('stationPanel');
   if (panel) panel.classList.remove('open');
   selectedStation = null;
   connectionPhase = null;
   hideConnectionPhaseUI();
   if (chargingTimer) { clearInterval(chargingTimer); chargingTimer = null; }
+  // Navigate back if we pushed state (unless called from popstate)
+  if (_panelPushedState && !skipHistory) {
+    _panelPushedState = false;
+    history.back();
+  } else {
+    _panelPushedState = false;
+    // Clear hash without pushing history
+    if (window.location.hash) history.replaceState(null, '', window.location.pathname);
+  }
 }
 
 function navigateToStation() {

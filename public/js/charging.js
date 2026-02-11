@@ -30,7 +30,33 @@ async function startCharging(paymentToken) {
   }
 }
 
-async function stopCharging() {
+function stopCharging() {
+  if (!selectedStation || !selectedStation.currentTransaction) return;
+  var tx = selectedStation.currentTransaction;
+  var energy = parseFloat(tx.energy) || 0;
+  var pricePerKwh = (selectedStation && selectedStation.pricePerKwh) || DEFAULT_COST_PER_KWH;
+  var cost = energy * pricePerKwh;
+  var timeEl = document.getElementById('chargingTime');
+  var duration = timeEl ? timeEl.textContent : '--';
+
+  var statsEl = document.getElementById('stopConfirmStats');
+  if (statsEl) {
+    statsEl.innerHTML =
+      '<div class="summary-stat"><span class="summary-stat-label">' + t('energy') + '</span><span class="summary-stat-value">' + energy.toFixed(2) + ' kWh</span></div>' +
+      '<div class="summary-stat"><span class="summary-stat-label">' + t('duration') + '</span><span class="summary-stat-value">' + duration + '</span></div>' +
+      '<div class="summary-stat"><span class="summary-stat-label">' + t('estimated_cost') + '</span><span class="summary-stat-value highlight">' + (typeof formatPrice === 'function' ? formatPrice(cost) : '\u20AC' + cost.toFixed(2)) + '</span></div>';
+  }
+  var modal = document.getElementById('stopConfirmModal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeStopConfirm() {
+  var modal = document.getElementById('stopConfirmModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+async function confirmAndStopCharging() {
+  closeStopConfirm();
   if (!selectedStation) return;
   var stopBtn = document.getElementById('stopBtn');
   if (stopBtn) { stopBtn.disabled = true; stopBtn.textContent = '\u23F9 ' + t('stopping'); }

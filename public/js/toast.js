@@ -1,25 +1,37 @@
+var _toastContainer = null;
+
 function showToast(message, type, icon) {
   type = type || '';
-  icon = icon || 'ℹ️';
-  var toast = document.getElementById('toast');
+  icon = icon || '\u2139\uFE0F';
 
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.id = 'toast';
-    toast.className = 'toast hidden';
-    toast.innerHTML = '<span class="toast-icon"></span><span id="toastMessage"></span>';
-    document.body.appendChild(toast);
+  if (!_toastContainer) {
+    _toastContainer = document.createElement('div');
+    _toastContainer.className = 'toast-container';
+    document.body.appendChild(_toastContainer);
   }
 
-  var toastMessage = document.getElementById('toastMessage') || toast.querySelector('span:last-child');
-  var toastIcon = toast.querySelector('.toast-icon');
+  // Limit to 3 visible toasts - remove oldest
+  while (_toastContainer.children.length >= 3) {
+    _toastContainer.removeChild(_toastContainer.firstChild);
+  }
 
-  if (toastIcon) toastIcon.textContent = icon;
-  if (toastMessage) toastMessage.textContent = message;
+  var toast = document.createElement('div');
+  toast.className = 'toast toast-enter ' + type;
+  toast.innerHTML = '<span class="toast-icon">' + icon + '</span><span class="toast-message">' + message + '</span>';
+  toast.onclick = function() { _dismissToast(toast); };
 
-  toast.className = 'toast ' + type;
+  _toastContainer.appendChild(toast);
 
+  toast._timeout = setTimeout(function() { _dismissToast(toast); }, 3000);
+}
+
+function _dismissToast(toast) {
+  if (toast._dismissed) return;
+  toast._dismissed = true;
+  if (toast._timeout) clearTimeout(toast._timeout);
+  toast.classList.remove('toast-enter');
+  toast.classList.add('toast-exit');
   setTimeout(function() {
-    toast.classList.add('hidden');
-  }, 3000);
+    if (toast.parentNode) toast.parentNode.removeChild(toast);
+  }, 300);
 }

@@ -1,13 +1,20 @@
+var _paymentTrigger = null;
+
 function showPayment() {
+  _paymentTrigger = document.activeElement;
   var modal = document.getElementById('paymentModal');
-  if (modal) modal.classList.remove('hidden');
-  var cardNumber = document.getElementById('cardNumber');
-  if (cardNumber) cardNumber.focus();
+  if (modal) {
+    modal.classList.remove('hidden');
+    trapFocus(modal);
+  }
 }
 
 function closePayment() {
   var modal = document.getElementById('paymentModal');
-  if (modal) modal.classList.add('hidden');
+  if (modal) {
+    modal.classList.add('hidden');
+    releaseFocus(modal, _paymentTrigger);
+  }
   var cardNum = document.getElementById('cardNumber');
   var cardExpiry = document.getElementById('cardExpiry');
   var cardCvv = document.getElementById('cardCvv');
@@ -24,22 +31,22 @@ async function processPayment() {
 
   var digits = (cardNumber || '').replace(/\s/g, '');
   if (digits.length < 16) {
-    if (cardError) { cardError.textContent = 'Please enter a valid 16-digit card number'; cardError.style.display = 'block'; }
+    if (cardError) { cardError.textContent = t('invalid_card_number'); cardError.style.display = 'block'; }
     return;
   }
   if (!expiry || !/^\d{2}\/\d{2}$/.test(expiry)) {
-    if (cardError) { cardError.textContent = 'Please enter a valid expiry date (MM/YY)'; cardError.style.display = 'block'; }
+    if (cardError) { cardError.textContent = t('invalid_expiry'); cardError.style.display = 'block'; }
     return;
   }
   if (!cvv || cvv.length < 3) {
-    if (cardError) { cardError.textContent = 'Please enter a valid security code'; cardError.style.display = 'block'; }
+    if (cardError) { cardError.textContent = t('invalid_cvv'); cardError.style.display = 'block'; }
     return;
   }
   if (cardError) cardError.style.display = 'none';
 
   var payBtn = document.getElementById('payBtn');
   var payBtnText = document.getElementById('payBtnText');
-  if (payBtn) { payBtn.disabled = true; if (payBtnText) payBtnText.textContent = 'Processing...'; }
+  if (payBtn) { payBtn.disabled = true; if (payBtnText) payBtnText.textContent = t('processing'); }
 
   try {
     var response = await fetch('/api/payment/process', {
@@ -59,7 +66,7 @@ async function processPayment() {
     showToast(t('payment_error'), 'error', '\u274C');
     console.error(error);
   } finally {
-    if (payBtn) { payBtn.disabled = false; if (payBtnText) payBtnText.textContent = 'Authorize & Start Charging'; }
+    if (payBtn) { payBtn.disabled = false; if (payBtnText) payBtnText.textContent = t('authorize_start'); }
   }
 }
 

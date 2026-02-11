@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#7CB342">
   <title>Admin Panel - eLink</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -721,6 +721,24 @@
       window.location.href = '/login.html';
     }
 
+    // Admin toast notification
+    let _adminToastTimer = null;
+    function showAdminToast(message, type) {
+      let toast = document.getElementById('adminToast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'adminToast';
+        toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:10px;color:white;font-size:14px;font-weight:500;z-index:9999;transition:opacity 0.3s;box-shadow:0 4px 12px rgba(0,0,0,0.15);cursor:pointer;';
+        toast.onclick = function() { toast.style.opacity = '0'; };
+        document.body.appendChild(toast);
+      }
+      toast.style.background = type === 'error' ? '#f44336' : '#4CAF50';
+      toast.textContent = message;
+      toast.style.opacity = '1';
+      if (_adminToastTimer) clearTimeout(_adminToastTimer);
+      _adminToastTimer = setTimeout(function() { toast.style.opacity = '0'; }, 3000);
+    }
+
     // Verify token server-side
     (async () => {
       try {
@@ -986,7 +1004,7 @@
         const res = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(query));
         const results = await res.json();
         if (results.length === 0) {
-          alert('Address not found. Try a different search.');
+          showAdminToast('Address not found. Try a different search.', 'error');
           return;
         }
 
@@ -1007,7 +1025,7 @@
           }
         }
       } catch (err) {
-        alert('Search failed. Check your internet connection.');
+        showAdminToast('Search failed. Check your internet connection.', 'error');
       }
     }
 
@@ -1031,7 +1049,7 @@
           document.getElementById('stationModal').classList.add('show');
           initMapPicker(s.lat, s.lng);
         })
-        .catch(() => alert('Failed to load station'));
+        .catch(() => showAdminToast('Failed to load station', 'error'));
     }
 
     async function saveStation(e) {
@@ -1072,14 +1090,15 @@
 
         if (!response.ok) {
           const err = await response.json();
-          alert(err.error || 'Failed to save station');
+          showAdminToast(err.error || 'Failed to save station', 'error');
           return;
         }
 
         closeStationModal();
         loadStations();
+        showAdminToast('Station saved successfully');
       } catch (error) {
-        alert('Network error saving station');
+        showAdminToast('Network error saving station', 'error');
       }
     }
 
@@ -1093,12 +1112,13 @@
         });
         if (!response.ok) {
           const err = await response.json();
-          alert(err.error || 'Failed to delete');
+          showAdminToast(err.error || 'Failed to delete', 'error');
           return;
         }
         loadStations();
+        showAdminToast('Station deleted');
       } catch (error) {
-        alert('Failed to delete station');
+        showAdminToast('Failed to delete station', 'error');
       }
     }
 
@@ -1112,7 +1132,7 @@
         });
         loadStations();
       } catch (error) {
-        alert('Failed to stop charging');
+        showAdminToast('Failed to stop charging', 'error');
       }
     }
 
@@ -1126,12 +1146,12 @@
         });
         loadReservations();
       } catch (error) {
-        alert('Failed to cancel');
+        showAdminToast('Failed to cancel', 'error');
       }
     }
 
     function exportTransactions() {
-      alert('Export feature coming soon');
+      showAdminToast('Export feature coming soon');
     }
 
     // === Demo Controls ===

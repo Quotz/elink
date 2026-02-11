@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#7CB342">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -12,7 +12,17 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+  <!-- Splash Screen -->
+  <div id="splashScreen" style="position:fixed;inset:0;background:white;z-index:9999;display:flex;align-items:center;justify-content:center;transition:opacity 0.3s">
+    <img src="/E-Link-1024x500.png" alt="eLink" style="height:60px;opacity:0.8">
+  </div>
+
   <div id="app">
+    <!-- Connection Banner -->
+    <div class="connection-banner hidden" id="connectionBanner">
+      <span data-i18n="data_may_be_outdated">Connection lost. Data may be outdated.</span>
+    </div>
+
     <!-- Header -->
     <header class="header">
       <div class="header-left">
@@ -29,7 +39,7 @@
 
     <!-- Search Bar -->
     <div class="search-bar" id="searchBar">
-      <input type="text" id="searchInput" data-i18n="search_stations" placeholder="Search stations..." autocomplete="off">
+      <input type="text" id="searchInput" data-i18n="search_stations" placeholder="Search stations..." autocomplete="off" aria-label="Search charging stations">
       <div class="search-results hidden" id="searchResults"></div>
     </div>
 
@@ -164,7 +174,7 @@
     </div>
 
     <!-- Payment Modal -->
-    <div class="modal hidden" id="paymentModal">
+    <div class="modal hidden" id="paymentModal" role="dialog" aria-modal="true" aria-label="Payment">
       <div class="modal-content">
         <div class="modal-header">
           <h3 data-i18n="payment">Payment</h3>
@@ -205,7 +215,7 @@
             </span>
           </button>
 
-          <div style="text-align:center;margin-top:14px;font-size:11px;color:#aaa">
+          <div style="text-align:center;margin-top:14px;font-size:11px;color:#777">
             <span data-i18n="cards_accepted">Visa, Mastercard, and Maestro accepted</span>
           </div>
         </div>
@@ -213,7 +223,7 @@
     </div>
 
     <!-- Session Summary Modal -->
-    <div class="modal hidden" id="summaryModal">
+    <div class="modal hidden" id="summaryModal" role="dialog" aria-modal="true" aria-label="Session Summary">
       <div class="modal-content">
         <div class="modal-header">
           <h3 data-i18n="session_complete">Session Complete</h3>
@@ -250,23 +260,35 @@
       </div>
     </div>
 
-    <!-- Toast Notifications -->
-    <div class="toast hidden" id="toast">
-      <span class="toast-icon">ℹ️</span>
-      <span id="toastMessage"></span>
+    <!-- Stop Charging Confirmation Modal -->
+    <div class="modal hidden" id="stopConfirmModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 data-i18n="confirm_stop">Stop Charging?</h3>
+          <button class="close-btn" onclick="closeStopConfirm()">&times;</button>
+        </div>
+        <div class="modal-body summary-content">
+          <p style="color:var(--gray-500);margin-bottom:16px" data-i18n="confirm_stop_desc">Are you sure you want to stop this charging session?</p>
+          <div class="summary-stats" id="stopConfirmStats"></div>
+          <div style="display:flex;gap:10px;margin-top:20px">
+            <button class="btn btn-secondary" style="flex:1" onclick="closeStopConfirm()" data-i18n="cancel">Cancel</button>
+            <button class="btn btn-danger" style="flex:1" onclick="confirmAndStopCharging()" data-i18n="stop_charging">Stop Charging</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Bottom Navigation -->
     <nav class="bottom-nav" id="bottomNav">
-      <button class="nav-item active" onclick="navMap()" id="navMapBtn">
+      <button class="nav-item active" onclick="navMap()" id="navMapBtn" aria-label="Map view">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
         <span data-i18n="map">Map</span>
       </button>
-      <button class="nav-item" onclick="navSearch()" id="navSearchBtn">
+      <button class="nav-item" onclick="navSearch()" id="navSearchBtn" aria-label="Search stations">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <span data-i18n="search">Search</span>
       </button>
-      <button class="nav-item" onclick="navProfile()" id="navProfileBtn">
+      <button class="nav-item" onclick="navProfile()" id="navProfileBtn" aria-label="Profile">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         <span id="navProfileLabel" data-i18n="profile">Profile</span>
       </button>

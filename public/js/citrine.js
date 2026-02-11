@@ -18,9 +18,11 @@ async function checkCitrineStatus() {
 async function fetchCitrineStationStatus(stationId) {
   if (!citrineStatus.available) return;
   try {
-    var response = await fetch('/api/stations/' + encodeURIComponent(stationId) + '/citrine-status', {
-      headers: authToken ? getAuthHeaders() : { 'Content-Type': 'application/json' }
-    });
+    var response = authToken
+      ? await fetchWithAuth('/api/stations/' + encodeURIComponent(stationId) + '/citrine-status')
+      : await fetch('/api/stations/' + encodeURIComponent(stationId) + '/citrine-status', {
+          headers: { 'Content-Type': 'application/json' }
+        });
     if (response.ok) {
       citrineStationStatus[stationId] = await response.json();
     }
