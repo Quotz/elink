@@ -407,7 +407,8 @@
         const response = await fetch('/api/wallet/balance', { headers: getAuthHeaders() });
         const data = await response.json();
         const balEl = document.getElementById('balanceAmount');
-        balEl.textContent = typeof formatPrice === 'function' ? formatPrice(data.balance) : `€${data.balance.toFixed(2)}`;
+        const bal = Number(data.balance) || 0;
+        balEl.textContent = typeof formatPrice === 'function' ? formatPrice(bal) : `€${bal.toFixed(2)}`;
       } catch (error) {
         console.error('Failed to load balance:', error);
       }
