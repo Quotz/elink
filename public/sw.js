@@ -25,6 +25,7 @@ const STATIC_ASSETS = [
   '/icon-192.png',
   '/icon-maskable-192.png',
   '/icon-maskable-512.png',
+  '/apple-touch-icon.png',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 ];
