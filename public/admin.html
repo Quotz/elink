@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#7CB342">
+  <meta name="theme-color" content="#5a9e2f">
   <title>Admin Panel - eLink</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
@@ -11,21 +11,23 @@
     
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #f5f5f5;
-      color: #333;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
 
     .admin-logo-bar {
       background: white;
-      padding: 10px 20px;
-      border-bottom: 1px solid #e0e0e0;
+      padding: 10px 24px;
+      border-bottom: 1px solid #e8e8ec;
     }
 
     .admin-header {
-      background: linear-gradient(135deg, #7CB342, #689F38);
+      background: linear-gradient(135deg, #5a9e2f, #4a8528);
       color: white;
-      padding: 14px 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 16px 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.06);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -34,7 +36,9 @@
     }
 
     .admin-header h1 {
-      font-size: 22px;
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
       margin: 0;
     }
 
@@ -66,113 +70,168 @@
     }
 
     .btn {
-      padding: 10px 20px;
+      padding: 9px 18px;
       border: none;
-      border-radius: 8px;
-      font-size: 14px;
+      border-radius: 6px;
+      font-size: 13px;
       cursor: pointer;
-      transition: all 0.3s;
+      transition: all 0.15s ease;
       font-weight: 500;
+      letter-spacing: 0.01em;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+      box-shadow: none;
     }
 
     .btn-primary {
       background: white;
-      color: #7CB342;
+      color: #5a9e2f;
+      border: 1px solid #e0e0e0;
+    }
+
+    .btn-primary:hover {
+      border-color: #5a9e2f;
     }
 
     .btn-success {
-      background: #7CB342;
+      background: #5a9e2f;
       color: white;
+    }
+
+    .btn-success:hover {
+      background: #4a8528;
     }
 
     .btn-danger {
-      background: #f44336;
+      background: #e53935;
       color: white;
+    }
+
+    .btn-danger:hover {
+      background: #c62828;
     }
 
     .btn-secondary {
-      background: #757575;
-      color: white;
+      background: #f5f5f5;
+      color: #555;
+      border: 1px solid #ddd;
+    }
+
+    .btn-secondary:hover {
+      background: #e8e8e8;
+      border-color: #ccc;
     }
 
     .btn-small {
-      padding: 6px 12px;
-      font-size: 13px;
+      padding: 5px 12px;
+      font-size: 12px;
+      border-radius: 5px;
     }
 
     /* Dashboard Stats */
     .dashboard-stats {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 20px;
-      margin-bottom: 30px;
+      gap: 16px;
+      margin-bottom: 28px;
     }
 
     .stat-card {
       background: white;
-      border-radius: 12px;
+      border-radius: 10px;
       padding: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+      border: 1px solid #eef0f2;
+      border-left: 3px solid #d0d5dd;
+      transition: box-shadow 0.15s ease;
+    }
+
+    .stat-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
 
     .stat-card h3 {
-      font-size: 13px;
-      color: #888;
+      font-size: 11px;
+      color: #8a919e;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 10px;
+      letter-spacing: 0.6px;
+      margin-bottom: 8px;
+      font-weight: 600;
     }
 
     .stat-value {
-      font-size: 32px;
+      font-size: 28px;
       font-weight: 700;
-      color: #333;
+      color: #1a1a2e;
+      letter-spacing: -0.5px;
     }
 
+    .stat-card.revenue {
+      border-left-color: #5a9e2f;
+    }
     .stat-card.revenue .stat-value {
-      color: #7CB342;
+      color: #5a9e2f;
     }
 
+    .stat-card.users {
+      border-left-color: #1976d2;
+    }
     .stat-card.users .stat-value {
-      color: #2196F3;
+      color: #1976d2;
     }
 
+    .stat-card.reservations {
+      border-left-color: #e67e22;
+    }
     .stat-card.reservations .stat-value {
-      color: #FF9800;
+      color: #e67e22;
     }
 
+    .stat-card.charging {
+      border-left-color: #2e7d32;
+    }
     .stat-card.charging .stat-value {
-      color: #4CAF50;
+      color: #2e7d32;
     }
 
     /* Tabs */
     .tabs {
       display: flex;
-      gap: 5px;
+      gap: 2px;
       background: white;
-      padding: 10px 20px 0;
-      border-bottom: 1px solid #e0e0e0;
+      padding: 0 24px;
+      border-bottom: 1px solid #e8e8ec;
     }
 
     .tab {
-      padding: 12px 20px;
+      padding: 14px 20px;
       border: none;
       background: none;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 500;
-      color: #666;
-      border-bottom: 3px solid transparent;
-      transition: all 0.2s;
+      color: #6b7280;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+      position: relative;
     }
 
     .tab:hover {
-      color: #333;
+      color: #1a1a2e;
+      background: #f8f9fa;
     }
 
     .tab.active {
-      color: #7CB342;
-      border-bottom-color: #7CB342;
+      color: #5a9e2f;
+      border-bottom-color: #5a9e2f;
+      font-weight: 600;
     }
 
     .tab-content {
@@ -187,21 +246,25 @@
     /* Tables */
     .data-table {
       background: white;
-      border-radius: 12px;
+      border-radius: 10px;
       overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+      border: 1px solid #eef0f2;
     }
 
     .table-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 20px;
-      border-bottom: 1px solid #e0e0e0;
+      padding: 18px 20px;
+      border-bottom: 1px solid #eef0f2;
     }
 
     .table-header h2 {
-      font-size: 18px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #1a1a2e;
+      letter-spacing: -0.2px;
     }
 
     table {
@@ -211,58 +274,69 @@
 
     th {
       text-align: left;
-      padding: 15px;
+      padding: 10px 16px;
       font-weight: 600;
-      color: #666;
-      font-size: 13px;
+      color: #8a919e;
+      font-size: 11px;
       text-transform: uppercase;
-      background: #f9f9f9;
+      letter-spacing: 0.5px;
+      background: #f8f9fb;
+      border-bottom: 1px solid #eef0f2;
     }
 
     td {
-      padding: 15px;
-      border-top: 1px solid #f0f0f0;
+      padding: 12px 16px;
+      border-top: 1px solid #f5f6f8;
+      font-size: 14px;
+      color: #374151;
+    }
+
+    tbody tr {
+      transition: background 0.1s ease;
     }
 
     tbody tr:hover {
-      background: #fafafa;
+      background: #f8f9fb;
     }
 
     .status-badge {
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      display: inline-block;
+      text-transform: uppercase;
     }
 
     .status-online {
-      background: #e8f5e9;
-      color: #2e7d32;
+      background: #ecfdf5;
+      color: #065f46;
     }
 
     .status-offline {
-      background: #f5f5f5;
-      color: #666;
+      background: #f3f4f6;
+      color: #6b7280;
     }
 
     .status-charging {
-      background: #fff3e0;
-      color: #ef6c00;
+      background: #fffbeb;
+      color: #b45309;
     }
 
     .status-active {
-      background: #e8f5e9;
-      color: #2e7d32;
+      background: #ecfdf5;
+      color: #065f46;
     }
 
     .status-completed {
-      background: #e3f2fd;
-      color: #1565c0;
+      background: #eff6ff;
+      color: #1e40af;
     }
 
     .status-cancelled {
-      background: #ffebee;
-      color: #c62828;
+      background: #fef2f2;
+      color: #991b1b;
     }
 
     /* Modal */
@@ -273,7 +347,9 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(0,0,0,0.5);
+      background: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       z-index: 1000;
       align-items: center;
       justify-content: center;
@@ -288,48 +364,81 @@
       background: white;
       border-radius: 12px;
       width: 100%;
-      max-width: 500px;
+      max-width: 520px;
       max-height: 90vh;
       overflow: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05);
     }
 
     .modal-header {
-      padding: 20px;
-      border-bottom: 1px solid #e0e0e0;
+      padding: 20px 24px;
+      border-bottom: 1px solid #eef0f2;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
 
+    .modal-header h3 {
+      font-size: 17px;
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+
     .modal-body {
-      padding: 20px;
+      padding: 24px;
     }
 
     .close-btn {
-      background: none;
+      background: #f3f4f6;
       border: none;
-      font-size: 24px;
+      font-size: 18px;
       cursor: pointer;
-      color: #888;
+      color: #6b7280;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease;
+    }
+
+    .close-btn:hover {
+      background: #e5e7eb;
+      color: #1a1a2e;
     }
 
     .form-group {
-      margin-bottom: 15px;
+      margin-bottom: 16px;
     }
 
     .form-group label {
       display: block;
-      margin-bottom: 5px;
+      margin-bottom: 6px;
       font-weight: 500;
-      color: #555;
+      font-size: 13px;
+      color: #374151;
     }
 
     .form-group input, .form-group select {
       width: 100%;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
       font-size: 14px;
+      color: #1a1a2e;
+      background: #fff;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: #5a9e2f;
+      box-shadow: 0 0 0 3px rgba(90, 158, 47, 0.1);
+    }
+
+    .form-group input::placeholder {
+      color: #9ca3af;
     }
 
     .form-row {
@@ -342,8 +451,38 @@
 
     .empty-state {
       text-align: center;
-      padding: 60px 20px;
-      color: #888;
+      padding: 48px 20px;
+      color: #9ca3af;
+      font-size: 14px;
+    }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #d1d5db;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #9ca3af;
+    }
+
+    ::selection {
+      background: rgba(90, 158, 47, 0.15);
+      color: inherit;
+    }
+
+    td strong {
+      color: #1a1a2e;
+      font-weight: 600;
+    }
+
+    td small {
+      color: #8a919e;
     }
 
     @media (max-width: 768px) {
@@ -369,23 +508,24 @@
       }
       .stat-card {
         padding: 14px;
+        border-left-width: 3px;
       }
       .stat-value {
-        font-size: 24px;
+        font-size: 22px;
       }
       .stat-card h3 {
-        font-size: 11px;
+        font-size: 10px;
       }
       .tabs {
         overflow-x: auto;
         flex-wrap: nowrap;
-        padding: 8px 12px 0;
+        padding: 0 12px;
         -webkit-overflow-scrolling: touch;
       }
       .tab {
         white-space: nowrap;
-        padding: 10px 14px;
-        font-size: 13px;
+        padding: 12px 16px;
+        font-size: 12px;
         min-height: 44px;
       }
       .tab-content {
@@ -401,11 +541,11 @@
       }
       tbody tr {
         background: white;
-        border-radius: 10px;
+        border-radius: 8px;
         margin-bottom: 10px;
         padding: 14px;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-        border: 1px solid #f0f0f0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        border: 1px solid #eef0f2;
       }
       td {
         display: flex;
@@ -413,7 +553,7 @@
         align-items: center;
         padding: 6px 0;
         border-top: none;
-        border-bottom: 1px solid #f5f5f5;
+        border-bottom: 1px solid #f5f6f8;
         font-size: 14px;
       }
       td:last-child {
@@ -423,28 +563,34 @@
       td::before {
         content: attr(data-label);
         font-weight: 600;
-        color: #666;
-        font-size: 12px;
+        color: #8a919e;
+        font-size: 11px;
         text-transform: uppercase;
+        letter-spacing: 0.3px;
         flex-shrink: 0;
         margin-right: 12px;
       }
       .data-table {
         background: transparent;
         box-shadow: none;
+        border: none;
       }
       .table-header {
         padding: 14px 4px;
         border-bottom: none;
       }
       .table-header h2 {
-        font-size: 16px;
+        font-size: 15px;
       }
       .btn { min-height: 44px; }
       .btn-small { min-height: 36px; padding: 8px 14px; }
+      .close-btn {
+        width: 36px;
+        height: 36px;
+      }
       .modal-content {
         max-width: 100%;
-        border-radius: 16px 16px 0 0;
+        border-radius: 12px 12px 0 0;
         max-height: 95vh;
       }
       .modal {
@@ -467,7 +613,7 @@
         padding: 12px;
       }
       .stat-value {
-        font-size: 22px;
+        font-size: 20px;
       }
     }
   </style>
@@ -493,7 +639,7 @@
     </div>
   </div>
 
-  <div style="max-width: 1400px; margin: 0 auto; padding: 20px;">
+  <div style="max-width: 1400px; margin: 0 auto; padding: 24px 28px;">
     <!-- Dashboard Stats -->
     <div class="dashboard-stats">
       <div class="stat-card revenue">
