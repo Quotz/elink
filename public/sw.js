@@ -23,6 +23,8 @@ const STATIC_ASSETS = [
   '/E-Link-1024x500.png',
   '/inova-logo.png',
   '/icon-192.png',
+  '/icon-maskable-192.png',
+  '/icon-maskable-512.png',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 ];
