@@ -76,11 +76,36 @@ router.post('/stations/:id/start', authenticateToken, async (req, res) => {
 
     const timeout = setTimeout(() => {
       pendingConnectionTimeouts.delete(id);
+      const fresh = store.getStation(id);
+      // If charging already started, don't send timeout
+      if (fresh && fresh.currentTransaction) {
+        console.log(`[Start] ${id} already charging, skipping timeout`);
+        startingStations.delete(id);
+        return;
+      }
       broadcastConnectionPhase(id, 'timeout');
       startingStations.delete(id);
     }, DEFAULT_AWAIT_SECONDS * 1000);
 
     pendingConnectionTimeouts.set(id, timeout);
+
+    // Send RemoteStartTransaction to the charger
+    if (USE_CITRINE_POLLING) {
+      try {
+        const result = await citrineClient.remoteStartTransaction(id, 1, effectiveIdTag);
+        console.log(`[Start] CitrineOS RemoteStart for ${id}:`, JSON.stringify(result));
+      } catch (error) {
+        console.error(`[Start] CitrineOS RemoteStart failed for ${id}:`, error.message);
+      }
+    } else {
+      const success = sendToCharger(id, 'RemoteStartTransaction', {
+        connectorId: 1,
+        idTag: effectiveIdTag
+      });
+      if (!success) {
+        console.error(`[Start] Direct OCPP send failed for ${id}`);
+      }
+    }
   }
 });
 

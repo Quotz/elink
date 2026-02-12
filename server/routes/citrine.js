@@ -7,7 +7,7 @@ const router = express.Router();
 const citrineClient = require('../citrine-client');
 const db = require('../database');
 const { authenticateToken, requireRole } = require('../auth');
-const { broadcastUpdate } = require('../websocket');
+const { broadcastUpdate, broadcastConnectionPhase } = require('../websocket');
 
 function notifyClients() {
   broadcastUpdate();
@@ -203,13 +203,15 @@ router.post('/webhook', async (req, res) => {
           model: data.chargePointModel,
           firmwareVersion: data.firmwareVersion,
           connected: true,
-          lastHeartbeat: Date.now()
+          lastHeartbeat: Date.now(),
+          connectionSource: 'citrineos'
         });
         shouldNotify = true;
         console.log(`[CitrineOS] BootNotification: ${data.stationId} connected`);
         break;
 
       case 'StartTransaction':
+        broadcastConnectionPhase(data.stationId, 'started');
         store.updateStation(data.stationId, {
           currentTransaction: {
             id: String(data.transactionId),
@@ -218,7 +220,8 @@ router.post('/webhook', async (req, res) => {
             startTime: Date.now(),
             startMeter: data.meterStart
           },
-          status: 'Charging'
+          status: 'Charging',
+          connectionSource: 'citrineos'
         });
         shouldNotify = true;
         console.log(`[CitrineOS] StartTransaction: ${data.stationId} tx ${data.transactionId}`);
@@ -243,7 +246,8 @@ router.post('/webhook', async (req, res) => {
       case 'Heartbeat':
         store.updateStation(data.stationId, {
           connected: true,
-          lastHeartbeat: Date.now()
+          lastHeartbeat: Date.now(),
+          connectionSource: 'citrineos'
         });
         shouldNotify = true;
         console.log(`[CitrineOS] Heartbeat: ${data.stationId}`);

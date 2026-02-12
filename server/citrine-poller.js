@@ -89,7 +89,7 @@ class CitrinePoller {
         newStatus = 'Charging';
       } else if (statusData && statusData.connectors && statusData.connectors.length > 0) {
         const connector = statusData.connectors[0];
-        // Map CitrineOS status to eLink status
+        // Map OCPP 1.6 connector status to eLink status
         const statusMap = {
           'Available': 'Available',
           'Preparing': 'Preparing',
@@ -116,7 +116,8 @@ class CitrinePoller {
         const updates = {
           connected: isConnected,
           status: newStatus,
-          lastHeartbeat: Date.now()
+          lastHeartbeat: Date.now(),
+          connectionSource: isConnected ? 'citrineos' : null
         };
 
         // If there's an active transaction, update currentTransaction

@@ -275,14 +275,9 @@ function setupDemoScenario() {
   const allStations = store.getStations();
 
   for (const station of allStations) {
-    // Skip if already connected via real OCPP
-    if (station.connected && station.connectionSource === 'ocpp') {
-      results.push({ id: station.id, action: 'skipped', reason: 'real OCPP connection' });
-      continue;
-    }
-    // Skip if already connected via CitrineOS poller
-    if (station.connected && station.connectionSource === 'citrineos') {
-      results.push({ id: station.id, action: 'skipped', reason: 'CitrineOS connection' });
+    // Skip if already connected by any means (real OCPP, CitrineOS, etc.)
+    if (station.connected) {
+      results.push({ id: station.id, action: 'skipped', reason: `already connected (${station.connectionSource || 'unknown'})` });
       continue;
     }
 

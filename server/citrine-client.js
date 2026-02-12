@@ -183,20 +183,33 @@ class CitrineOSClient {
   // Status
 
   async getStationStatus(stationId) {
-    // Query CitrineOS for connector status via variable attributes
+    // Query Connectors table via Hasura GraphQL for OCPP 1.6 charger status
+    // The variableAttribute endpoint only works for OCPP 2.0+
     try {
-      const response = await this.client.get(`/data/monitoring/variableAttribute`, {
-        params: {
-          stationId: stationId,
-          tenantId: 1,
-          component_name: 'Connector',
-          variable_name: 'AvailabilityState'
-        }
-      });
-      return response.data;
+      const hasuraUrl = process.env.HASURA_URL || 'http://localhost:8090';
+      const response = await axios.post(`${hasuraUrl}/v1/graphql`, {
+        query: `{ Connectors(where: {stationId: {_eq: "${stationId}"}}) { connectorId status errorCode } }`
+      }, { timeout: 10000, headers: { 'Content-Type': 'application/json' } });
+
+      if (response.data?.data?.Connectors?.length > 0) {
+        return { connectors: response.data.data.Connectors };
+      }
+      // No connector records = station not registered in CitrineOS
+      throw new Error(`No connector data for station ${stationId}`);
     } catch (error) {
-      // If no data found, return empty status
-      return { connectors: [{ status: 'Unknown' }] };
+      // Fallback: try the variable attribute endpoint (OCPP 2.0)
+      try {
+        const response = await this.client.get(`/data/monitoring/variableAttribute`, {
+          params: { stationId, tenantId: 1, component_name: 'Connector', variable_name: 'AvailabilityState' }
+        });
+        // Only return if we got actual connector data
+        if (Array.isArray(response.data) && response.data.length > 0) {
+          return { connectors: response.data.map(v => ({ status: v.value || 'Available' })) };
+        }
+        throw new Error(`No status data for station ${stationId}`);
+      } catch (fallbackError) {
+        throw new Error(`Station ${stationId} not found in CitrineOS`);
+      }
     }
   }
 
