@@ -1,5 +1,6 @@
 const store = require('./store');
 const { v4: uuidv4 } = require('uuid');
+const { broadcastConnectionPhase } = require('./websocket');
 
 // OCPP 1.6 message types
 const CALL = 2;
@@ -124,6 +125,9 @@ function handleChargerRequest(chargerId, messageId, action, payload, ws, broadca
         connectorId: payload.connectorId,
         statusInfo: payload.info // Additional status information
       });
+      if (newStatus === 'Preparing') {
+        broadcastConnectionPhase(chargerId, 'car_connected');
+      }
       response = {};
       break;
       
@@ -169,7 +173,7 @@ function handleChargerRequest(chargerId, messageId, action, payload, ws, broadca
           reason: payload.reason,
           duration: durationMs,
           avgPower: durationHours > 0 ? (energyDelivered / durationHours).toFixed(2) : 0,
-          cost: (energyDelivered * 0.35).toFixed(2) // Calculate cost at €0.35/kWh
+          cost: (energyDelivered * (station.pricePerKwh || 0.15)).toFixed(2)
         };
         
         // Add to session history (keep last 50 sessions)

@@ -40,9 +40,9 @@ function connectWebSocket() {
             // Only show summary if this was our own session (has idTag = full data from server)
             var wasOwner = selectedStation.currentTransaction.idTag && currentUser &&
               selectedStation.currentTransaction.idTag === currentUser.id;
-            if (wasOwner) showSessionSummary(selectedStation.currentTransaction);
+            if (wasOwner) showSessionSummary(updated.lastTransaction || selectedStation.currentTransaction);
           }
-          if (connectionPhase && updated.currentTransaction) {
+          if (connectionPhase === 'awaiting_car' && updated.currentTransaction) {
             hideConnectionPhaseUI();
           }
           selectedStation = updated;

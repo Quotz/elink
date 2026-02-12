@@ -195,6 +195,9 @@ router.post('/webhook', async (req, res) => {
         });
         shouldNotify = true;
         console.log(`[CitrineOS] StatusNotification: ${data.stationId} is now ${elinkStatus}`);
+        if (data.status === 'Preparing') {
+          broadcastConnectionPhase(data.stationId, 'car_connected');
+        }
         break;
 
       case 'BootNotification':
@@ -229,18 +232,28 @@ router.post('/webhook', async (req, res) => {
 
       case 'StopTransaction':
         const station = store.getStation(data.stationId);
+        const startMeter = station?.currentTransaction?.startMeter || 0;
+        const energyDelivered = data.meterStop ? (data.meterStop - startMeter) / 1000 : 0;
+        const txStartTime = station?.currentTransaction?.startTime || Date.now();
+        const txDurationMs = Date.now() - txStartTime;
+        const txDurationHours = txDurationMs / 3600000;
         store.updateStation(data.stationId, {
           currentTransaction: null,
           lastTransaction: {
+            ...station?.currentTransaction,
             id: String(data.transactionId),
-            energy: data.meterStop ? (data.meterStop - (station?.currentTransaction?.startMeter || 0)) / 1000 : 0,
-            startTime: station?.currentTransaction?.startTime,
-            endTime: Date.now()
+            energyDelivered: energyDelivered.toFixed(2),
+            energy: energyDelivered,
+            startTime: txStartTime,
+            endTime: Date.now(),
+            duration: txDurationMs,
+            avgPower: txDurationHours > 0 ? (energyDelivered / txDurationHours).toFixed(1) : '0',
+            cost: (energyDelivered * (station?.pricePerKwh || 0.15)).toFixed(2)
           },
           status: 'Available'
         });
         shouldNotify = true;
-        console.log(`[CitrineOS] StopTransaction: ${data.stationId} tx ${data.transactionId}`);
+        console.log(`[CitrineOS] StopTransaction: ${data.stationId} tx ${data.transactionId}, energy: ${energyDelivered.toFixed(2)} kWh`);
         break;
 
       case 'Heartbeat':

@@ -77,9 +77,9 @@ router.post('/stations/:id/start', authenticateToken, async (req, res) => {
     const timeout = setTimeout(() => {
       pendingConnectionTimeouts.delete(id);
       const fresh = store.getStation(id);
-      // If charging already started, don't send timeout
-      if (fresh && fresh.currentTransaction) {
-        console.log(`[Start] ${id} already charging, skipping timeout`);
+      // If car connected or charging already started, don't send timeout
+      if (fresh && (fresh.currentTransaction || fresh.status === 'Preparing')) {
+        console.log(`[Start] ${id} already ${fresh.status === 'Preparing' ? 'connected' : 'charging'}, skipping timeout`);
         startingStations.delete(id);
         return;
       }
@@ -94,8 +94,19 @@ router.post('/stations/:id/start', authenticateToken, async (req, res) => {
       try {
         const result = await citrineClient.remoteStartTransaction(id, 1, effectiveIdTag);
         console.log(`[Start] CitrineOS RemoteStart for ${id}:`, JSON.stringify(result));
+        if (result && result.status === 'Rejected') {
+          console.error(`[Start] Charger ${id} rejected RemoteStart`);
+          clearTimeout(pendingConnectionTimeouts.get(id));
+          pendingConnectionTimeouts.delete(id);
+          broadcastConnectionPhase(id, 'error');
+          startingStations.delete(id);
+        }
       } catch (error) {
         console.error(`[Start] CitrineOS RemoteStart failed for ${id}:`, error.message);
+        clearTimeout(pendingConnectionTimeouts.get(id));
+        pendingConnectionTimeouts.delete(id);
+        broadcastConnectionPhase(id, 'error');
+        startingStations.delete(id);
       }
     } else {
       const success = sendToCharger(id, 'RemoteStartTransaction', {
@@ -104,6 +115,10 @@ router.post('/stations/:id/start', authenticateToken, async (req, res) => {
       });
       if (!success) {
         console.error(`[Start] Direct OCPP send failed for ${id}`);
+        clearTimeout(pendingConnectionTimeouts.get(id));
+        pendingConnectionTimeouts.delete(id);
+        broadcastConnectionPhase(id, 'error');
+        startingStations.delete(id);
       }
     }
   }

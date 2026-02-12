@@ -107,7 +107,7 @@ function updatePanel() {
 
     if (isOccupied) {
       // Non-owner: show "In Use" state
-      if (connectionPhase) hideConnectionPhaseUI();
+      if (connectionPhase === 'awaiting_car') hideConnectionPhaseUI();
       if (chargingDisplay) chargingDisplay.classList.add('hidden');
       if (startBtn) startBtn.classList.add('hidden');
       if (stopBtn) stopBtn.classList.add('hidden');
@@ -117,7 +117,7 @@ function updatePanel() {
     } else {
       // Owner: show full charging data
       hideOccupiedMessage();
-      if (connectionPhase) hideConnectionPhaseUI();
+      if (connectionPhase === 'awaiting_car') hideConnectionPhaseUI();
       if (chargingDisplay) chargingDisplay.classList.remove('hidden');
       if (startBtn) startBtn.classList.add('hidden');
       if (stopBtn) stopBtn.classList.remove('hidden');
@@ -132,23 +132,25 @@ function updatePanel() {
       var dataAge = Date.now() - (selectedStation.lastHeartbeat || Date.now());
       var isDataFresh = dataAge < 15000;
       var hasActiveFlow = power > 100;
+      var txAge = Date.now() - new Date(tx.startTime).getTime();
+      var awaitingData = power === 0 && energy === 0 && txAge < 30000;
 
       var currentPowerEl = document.getElementById('currentPower');
       if (currentPowerEl) {
-        currentPowerEl.textContent = (power / 1000).toFixed(1);
+        currentPowerEl.textContent = awaitingData ? '--' : (power / 1000).toFixed(1);
         var powerElement = currentPowerEl.parentElement;
         if (powerElement) {
-          powerElement.style.opacity = !isDataFresh ? '0.6' : (!hasActiveFlow && tx.energy > 0) ? '0.8' : '1';
+          powerElement.style.opacity = awaitingData ? '0.5' : !isDataFresh ? '0.6' : (!hasActiveFlow && tx.energy > 0) ? '0.8' : '1';
         }
       }
 
       var energyEl = document.getElementById('energyDelivered');
-      if (energyEl) energyEl.textContent = Math.max(0, energy).toFixed(2);
+      if (energyEl) energyEl.textContent = awaitingData ? '--' : Math.max(0, energy).toFixed(2);
 
       var costEl = document.getElementById('costAmount');
       var pricePerKwh = (selectedStation && selectedStation.pricePerKwh) || DEFAULT_COST_PER_KWH;
       var costEur = Math.max(0, energy) * pricePerKwh;
-      if (costEl) costEl.textContent = typeof formatPrice === 'function' ? formatPrice(costEur) : '\u20AC' + costEur.toFixed(2);
+      if (costEl) costEl.textContent = awaitingData ? '--' : (typeof formatPrice === 'function' ? formatPrice(costEur) : '\u20AC' + costEur.toFixed(2));
 
       updateBatteryIndicator(energy, soc);
       if (power > sessionData.maxPower) sessionData.maxPower = power;
@@ -257,17 +259,17 @@ function navigateToStation() {
 
 function showSessionSummary(transaction) {
   if (!transaction) return;
-  var energy = parseFloat(transaction.energy) || 0;
+  // Prefer server-calculated energyDelivered (from meterStop), fall back to tracked energy
+  var energy = parseFloat(transaction.energyDelivered) || parseFloat(transaction.energy) || 0;
   var pricePerKwh = (selectedStation && selectedStation.pricePerKwh) || DEFAULT_COST_PER_KWH;
-  var cost = energy * pricePerKwh;
-  var startTime = new Date(transaction.startTime);
-  var endTime = new Date();
-  var durationMs = endTime - startTime;
+  // Use server-calculated cost if available, otherwise compute locally
+  var cost = transaction.cost ? parseFloat(transaction.cost) : energy * pricePerKwh;
+  // Use server duration if available, otherwise compute from timestamps
+  var durationMs = transaction.duration || (Date.now() - new Date(transaction.startTime).getTime());
   var hours = Math.floor(durationMs / 3600000);
   var minutes = Math.floor((durationMs % 3600000) / 60000);
   var durationStr = hours > 0 ? hours + 'h ' + minutes + 'm' : minutes + 'm';
-  var durationHours = durationMs / 3600000;
-  var avgPower = durationHours > 0 ? (energy / durationHours).toFixed(1) : 0;
+  var avgPower = transaction.avgPower ? parseFloat(transaction.avgPower) : (durationMs > 0 ? (energy / (durationMs / 3600000)).toFixed(1) : 0);
 
   var el;
   el = document.getElementById('summaryEnergy'); if (el) el.textContent = energy.toFixed(2) + ' kWh';
@@ -350,6 +352,15 @@ function updateConnectionPhaseUI(data) {
 
   switch (data.phase) {
     case 'awaiting_car': break;
+    case 'car_connected':
+      if (overlay._countdownInterval) clearInterval(overlay._countdownInterval);
+      if (title) title.textContent = t('plug_detected');
+      if (subtitle) subtitle.textContent = t('initializing_session');
+      var animElPlug = overlay.querySelector('.car-plug-animation');
+      if (animElPlug) animElPlug.outerHTML = '<div class="checkmark-circle success"><div class="checkmark">&#128268;</div></div>';
+      if (navigator.vibrate) navigator.vibrate(200);
+      showToast(t('plug_detected'), 'success');
+      break;
     case 'started':
       if (overlay._countdownInterval) clearInterval(overlay._countdownInterval);
       if (title) title.textContent = t('charging_started');
@@ -367,6 +378,20 @@ function updateConnectionPhaseUI(data) {
       var animEl2 = overlay.querySelector('.car-plug-animation');
       if (animEl2) animEl2.outerHTML = '<div class="timeout-circle"><div class="timeout-icon">&#9203;</div></div>';
       if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+      setTimeout(function() {
+        hideConnectionPhaseUI();
+        var startBtn = document.getElementById('startBtn');
+        if (startBtn) { startBtn.disabled = false; startBtn.classList.remove('hidden'); startBtn.innerHTML = '&#9889; ' + t('start_charging'); }
+      }, 3000);
+      break;
+    case 'error':
+      if (overlay._countdownInterval) clearInterval(overlay._countdownInterval);
+      if (title) title.textContent = t('start_failed');
+      if (subtitle) subtitle.textContent = t('charger_offline');
+      var animElErr = overlay.querySelector('.car-plug-animation');
+      if (animElErr) animElErr.outerHTML = '<div class="timeout-circle"><div class="timeout-icon">&#10060;</div></div>';
+      if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+      showToast(t('start_failed'), 'error');
       setTimeout(function() {
         hideConnectionPhaseUI();
         var startBtn = document.getElementById('startBtn');

@@ -5,7 +5,7 @@
 
 const citrineClient = require('./citrine-client');
 const store = require('./store');
-const { broadcastUpdate } = require('./websocket');
+const { broadcastUpdate, broadcastConnectionPhase } = require('./websocket');
 
 class CitrinePoller {
   constructor() {
@@ -139,6 +139,10 @@ class CitrinePoller {
         if (station.status !== newStatus || station.connected !== isConnected) {
           store.updateStation(stationId, updates);
           console.log(`[CitrinePoller] ${stationId}: ${station.status} -> ${newStatus} (connected: ${isConnected})`);
+
+          if (newStatus === 'Preparing') {
+            broadcastConnectionPhase(stationId, 'car_connected');
+          }
 
           // Broadcast update to all clients
           if (this.broadcast) {

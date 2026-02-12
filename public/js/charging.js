@@ -75,7 +75,7 @@ async function confirmAndStopCharging() {
     });
     var result = await response.json();
     if (response.ok) {
-      showToast(t('charging_stopped'), 'success', '\u2705');
+      showToast(t('stopping'), 'info');
       if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
     } else {
       showToast(result.error || t('failed_to_stop'), 'error', '\u274C');
